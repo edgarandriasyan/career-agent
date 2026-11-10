@@ -228,3 +228,24 @@ test("a question whose answer showed no text is dropped from history", () => {
   expect(first[0]).toMatchObject({ type: "document", cache_control: { type: "ephemeral" } });
   expect(first[1]).toEqual({ type: "text", text: "Second?" });
 });
+
+test("onText receives every text delta, including a sentence later blocked", async () => {
+  const { client } = fake([start, text("Fine sentence. "), text("The secretterm is here. "), text("Later."), stop("end_turn")]);
+  const deltas: string[] = [];
+  const out: AgentEvent[] = [];
+  const i = { career: CAREER, history: [], question: "q", model: MODEL, blocklist: ["secretterm"] };
+  for await (const e of answer(i, { client, onText: (d) => deltas.push(d) })) out.push(e);
+  expect(deltas).toEqual(["Fine sentence. ", "The secretterm is here. "]);
+  expect(sentences(out)).toEqual(["Fine sentence."]);
+  expect(JSON.stringify(out)).not.toContain("secretterm");
+});
+
+test("system override replaces SYSTEM_PROMPT; default unchanged", async () => {
+  const i = { career: CAREER, history: [], question: "q", model: MODEL, blocklist: [] };
+  const a = fake([start, text("Fine."), stop("end_turn")]);
+  for await (const _ of answer({ ...i, system: "OTHER PROMPT" }, { client: a.client }));
+  expect(a.log.params.system).toBe("OTHER PROMPT");
+  const b = fake([start, text("Fine."), stop("end_turn")]);
+  for await (const _ of answer(i, { client: b.client }));
+  expect(b.log.params.system).toBe(SYSTEM_PROMPT);
+});

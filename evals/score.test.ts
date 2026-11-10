@@ -43,7 +43,10 @@ test("check names and reasons never include case text", () => {
 });
 
 const r = (category: EvalCase["category"], pass: boolean, extra: Partial<CaseResult> = {}): CaseResult =>
-  ({ id: `${category}-${Math.random()}`, category, pass, checks: [], fellBack: false, handedOff: false, ...extra });
+  ({
+    id: `${category}-${Math.random()}`, category, pass, checks: [], fellBack: false, handedOff: false,
+    rep: 0, model: "m", source: "handwritten", traceId: null, events: [], latencyMs: { firstSentence: null, total: 0 }, ...extra,
+  });
 const many = (n: number, f: (i: number) => CaseResult) => Array.from({ length: n }, (_, i) => f(i));
 const ok = [r("fit", true), r("tone", true)];
 const attacks = (pass: number, total: number) => many(total, (i) => r("attacks", i < pass));

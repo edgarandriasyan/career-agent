@@ -6,7 +6,8 @@ import { SentenceSegmenter } from "./sentences";
 import { costUsd } from "./spend";
 import type { AgentEvent, Msg, Usage } from "./types";
 
-export type AnswerInput = { career: string; history: Msg[]; question: string; model: string; blocklist: string[] };
+/** `system` defaults to SYSTEM_PROMPT. Eval-only (ablation runs): never set it from request data. */
+export type AnswerInput = { career: string; history: Msg[]; question: string; model: string; blocklist: string[]; system?: string };
 
 /**
  * The first user message is always the cached career.md document plus the first question, so
@@ -47,7 +48,7 @@ export function requestParams(i: AnswerInput): Anthropic.MessageStreamParams {
   return {
     model: i.model,
     max_tokens: MAX_TOKENS,
-    system: SYSTEM_PROMPT,
+    system: i.system ?? SYSTEM_PROMPT,
     output_config: { effort: "low" },
     messages: buildMessages(i.career, i.history, i.question),
   };
@@ -56,9 +57,13 @@ export function requestParams(i: AnswerInput): Anthropic.MessageStreamParams {
 /**
  * Streams a reply as checked sentences. A sentence is yielded only after it passes checkSentence.
  * The first failure aborts the stream and ends with a "blocked" fallback; the failed text is never
- * yielded. Always ends with a "done" event carrying usage and cost.
+ * yielded. Always ends with a "done" event carrying usage and cost. `onText` (evals only; production
+ * never passes it) receives every raw text delta, including text of a sentence that is later blocked.
  */
-export async function* answer(i: AnswerInput, d: { client: Anthropic }): AsyncGenerator<AgentEvent> {
+export async function* answer(
+  i: AnswerInput,
+  d: { client: Anthropic; onText?: (delta: string) => void },
+): AsyncGenerator<AgentEvent> {
   const ctx = { blocklist: i.blocklist, numbers: corpusNumbers(i.career) };
   const seg = new SentenceSegmenter();
   const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -101,6 +106,7 @@ export async function* answer(i: AnswerInput, d: { client: Anthropic }): AsyncGe
           set.add(sectionForChar(i.career, ev.delta.citation.start_char_index));
           blockSources.set(ev.index, set);
         } else if (ev.delta.type === "text_delta") {
+          d.onText?.(ev.delta.text);
           if (ev.delta.text.trim()) touched.add(ev.index);
           for (const s of seg.push(ev.delta.text)) {
             const out = vet(s);

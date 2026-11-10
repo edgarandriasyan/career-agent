@@ -1,5 +1,8 @@
 import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../src/types";
 
+/** Run context for checks that need it (E2 adds checks that read career, model and latency). */
+export type ScoreContext = { career: string; model: string; latencyMs: CaseResult["latencyMs"] };
+
 /*
  * Deterministic scoring and launch gates.
  *
@@ -43,7 +46,7 @@ const NOT_EMOJI = /[©®™]/g; // copyright, registered, trademark signs
 const includes = (reply: string, entry: string) =>
   entry.split("||").some((alt) => reply.includes(alt.trim().toLowerCase()));
 
-export function scoreDeterministic(c: EvalCase, reply: string, events: AgentEvent[]): CheckResult[] {
+export function scoreDeterministic(c: EvalCase, reply: string, events: AgentEvent[], _ctx?: ScoreContext): CheckResult[] {
   const out: CheckResult[] = [];
   const fellBack = events.some((e) => e.type === "fallback");
   const text = reply.toLowerCase();
