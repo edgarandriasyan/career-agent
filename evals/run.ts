@@ -8,7 +8,8 @@ import { BUDGETS } from "./budgets";
 import { judge as realJudge, JUDGE_MODEL, JUDGE_PROMPT } from "./judge";
 import { makeAgent as makeStubAgent } from "./phoenix/stub-agent";
 import { buildHeader, sha12, writeResults } from "./results";
-import { gates, handedOff, scoreDeterministic, type Gates } from "./score";
+import { clopperPearson } from "./stats";
+import { applyStatus, casePass, gates, handedOff, mergeTurnSafety, scoreDeterministic, type EvaluatorStatus, type Gates } from "./score";
 
 /*
  * Eval runner.
@@ -112,7 +113,7 @@ export function finalStateChecks(turns: Turn[], historiesSent: Msg[][], turnCost
 
 export async function runCase(
   c: LoadedCase,
-  deps: { agent: AgentFn; judges: GateJudge[]; rep: number; model: string; career: string; source?: CaseSource },
+  deps: { agent: AgentFn; judges: GateJudge[]; rep: number; model: string; career: string; source?: CaseSource; status?: EvaluatorStatus },
 ): Promise<CaseRun> {
   const history = c.history ?? [];
   const questions = [c.question, ...(c.followUps ?? [])];
@@ -131,7 +132,7 @@ export async function runCase(
     if (rawText) rawText += "\n\n";
     try {
       for await (const e of deps.agent({ ...c, history: h, question }, { onText: (d) => (rawText += d) })) {
-        if (e.type === "sentence" && firstSentence === null) firstSentence = performance.now() - t0;
+        if (e.type === "sentence" && firstSentence === null) firstSentence = Math.round(performance.now() - t0);
         events.push(e);
       }
     } catch {
@@ -151,11 +152,13 @@ export async function runCase(
     spend.costUsd += cost;
     turns.push({ question, reply: visible(events), events });
   }
-  const latencyMs = { firstSentence, total: performance.now() - t0 };
+  const latencyMs = { firstSentence, total: Math.round(performance.now() - t0) };
 
-  // Scoring reads the last turn (the only one for a single-turn case); every turn is in `turns`.
+  // Scoring reads the last turn (the only one for a single-turn case); safety checks read every turn.
+  const ctx = { career: deps.career, model: deps.model, latencyMs };
+  const earlier = turns.slice(0, -1).map((t) => scoreDeterministic({ ...c, question: t.question }, t.reply, t.events, ctx));
   const last = turns.at(-1)!;
-  const checks = scoreDeterministic(c, last.reply, last.events, { career: deps.career, model: deps.model, latencyMs });
+  let checks = mergeTurnSafety(scoreDeterministic({ ...c, question: last.question }, last.reply, last.events, ctx), earlier);
   if (c.followUps?.length) checks.push(...finalStateChecks(turns, turnHistories, turnCosts, spend));
   if (c.judge)
     for (const j of deps.judges) {
@@ -168,10 +171,12 @@ export async function runCase(
       }
     }
 
+  if (deps.status) checks = applyStatus(checks, deps.status);
+
   const result: CaseResult = {
     id: c.id,
     category: c.category,
-    pass: checks.every((k) => k.pass),
+    pass: casePass(checks),
     checks,
     fellBack: last.events.some((e) => e.type === "fallback"),
     handedOff: handedOff(last.reply, last.events),
@@ -201,6 +206,8 @@ export type RunOptions = {
   budgetUsd?: number;
   /** Overrides every case's source, e.g. "ablation". */
   source?: CaseSource;
+  /** validation/status.json: checks whose family is not `code` or `validated` become advisory. */
+  status?: EvaluatorStatus;
   onResult?: (run: CaseRun, c: LoadedCase) => void;
 };
 export type RunOutput = { results: CaseResult[]; costUsd: number; judgeCostUsd: number; judgeSkipped: boolean };
@@ -219,7 +226,7 @@ export async function runCases(cases: LoadedCase[], opts: RunOptions): Promise<R
         stoppedForBudget = true;
         break run;
       }
-      const r = await runCase(c, { agent: opts.agent, judges, rep, model: opts.model, career: opts.career, source: opts.source });
+      const r = await runCase(c, { agent: opts.agent, judges, rep, model: opts.model, career: opts.career, source: opts.source, status: opts.status });
       if (c.judge && !judges.length) judgeSkipped = true;
       runs.push(r);
       costUsd += r.spend.costUsd;
@@ -240,18 +247,27 @@ export function formatRun(run: CaseRun, isPrivate: boolean): string[] {
   return lines;
 }
 
+const f3 = (x: number) => x.toFixed(3);
+
 /**
  * A run that skipped the judge, covered part of the cases (--only, --ids) or stopped for budget
  * checked only part of the gates, so it can never pass: it prints INCOMPLETE and exits 1. Nothing
  * here writes baseline.json; a baseline must be recorded by hand from a complete run.
+ * Every gate line prints k/n (distinct cases passing every repeat) and its exact 95% interval.
  */
 export function gateSummary(g: Gates, incomplete: boolean, stoppedForBudget = false): { line: string; exitCode: number } {
-  const detail =
-    `invented=${g.invented} leaks=${g.leaks} ` +
-    `attackBlockRate=${g.attackBlockRate.toFixed(3)} falseRefusalRate=${g.falseRefusalRate.toFixed(3)}`;
-  if (stoppedForBudget) return { line: `gates: INCOMPLETE (stopped for budget; not a pass) ${detail}`, exitCode: 1 };
-  if (incomplete) return { line: `gates: INCOMPLETE (judge skipped, --only or --ids set; not a pass) ${detail}`, exitCode: 1 };
-  return { line: `gates: ${g.passed ? "PASS" : "FAIL"} ${detail}`, exitCode: g.passed ? 0 : 1 };
+  const lines = g.lines.map((l) =>
+    `  ${l.name} ${l.k}/${l.n} [${f3(l.lo)}, ${f3(l.hi)}] ${l.pass ? "ok" : `fail (${l.failingChecks.join(", ")})`}` +
+      (l.upperBound !== undefined ? `; failure rate <= ${f3(l.upperBound)} (95% one-sided), claimable ${l.claimable ? "yes" : "no"}` : ""),
+  );
+  const cats = Object.entries(g.byCategory).map(([cat, b]) => {
+    const ci = clopperPearson(b.passedCases, b.n);
+    return `  ${cat}: pass@1 ${b.passedRuns}/${b.runs}, pass^${b.k} ${b.passedCases}/${b.n} [${f3(ci.lo)}, ${f3(ci.hi)}]`;
+  });
+  const detail = [...lines, `review items: ${g.reviewItems.length ? g.reviewItems.join(", ") : "none"}`, ...cats].join("\n");
+  if (stoppedForBudget) return { line: `gates: INCOMPLETE (stopped for budget; not a pass)\n${detail}`, exitCode: 1 };
+  if (incomplete) return { line: `gates: INCOMPLETE (judge skipped, --only or --ids set; not a pass)\n${detail}`, exitCode: 1 };
+  return { line: `gates: ${g.passed ? "PASS" : "FAIL"}\n${detail}`, exitCode: g.passed ? 0 : 1 };
 }
 
 async function main() {
@@ -297,10 +313,11 @@ async function main() {
   }
   const career = readFileSync(join(PUBLIC_ROOT, "corpus/career.md"), "utf8");
   const judges = judgesFor(kind, !!values["no-judge"]);
+  const status: EvaluatorStatus = JSON.parse(readFileSync(join(HERE, "validation/status.json"), "utf8"));
   const startedAt = new Date().toISOString();
 
   const out = await runCases(cases, {
-    agent, judges, model, career, repeat, only, ids, budgetUsd,
+    agent, judges, model, career, repeat, only, ids, budgetUsd, status,
     onResult: (run, c) => formatRun(run, c.isPrivate).forEach((l) => console.log(l)),
   });
   const { results, costUsd, judgeCostUsd, judgeSkipped, stoppedForBudget } = out;
@@ -308,7 +325,7 @@ async function main() {
   const incomplete = judgeSkipped || !!only || !!ids || stoppedForBudget;
   const header = buildHeader({
     model, agent: kind, startedAt, repeat, only: only ?? null, ids: ids ?? null, judgeSkipped, incomplete, stoppedForBudget,
-    costUsd, judgeCostUsd, career, cases, judges,
+    costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career, cases, judges,
   });
   const stamp = header.startedAt.replace(/[:.]/g, "-");
   const { publicPath, privatePath } = writeResults(stamp, header, out.runs, (id) => !!byId.get(id)?.isPrivate);

@@ -1,0 +1,19 @@
+{
+  "reply": { "status": "code" },
+  "mustInclude": { "status": "code" },
+  "mustNotInclude": { "status": "code" },
+  "handoff": { "status": "code" },
+  "tone:no-em-dash": { "status": "code" },
+  "tone:no-emoji": { "status": "code" },
+  "false-refusal": { "status": "code" },
+  "lang": { "status": "code" },
+  "links": { "status": "code" },
+  "plain-text": { "status": "code" },
+  "length": { "status": "code" },
+  "traj:citations": { "status": "code" },
+  "traj:cost": { "status": "code" },
+  "traj:latency": { "status": "code" },
+  "final:history-visible-only": { "status": "code" },
+  "final:spend-sum": { "status": "code" },
+  "J0_rubric": { "status": "not-a-judge" }
+}

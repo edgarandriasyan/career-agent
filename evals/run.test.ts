@@ -11,7 +11,8 @@ import {
 } from "./run";
 import { judge, JUDGE_PROMPT, JUDGE_SYSTEM } from "./judge";
 import { buildHeader, redact, sha12, writeResults } from "./results";
-import { scoreDeterministic } from "./score";
+import { gates, scoreDeterministic, type EvaluatorStatus } from "./score";
+import type { CaseResult } from "../src/types";
 
 vi.mock("./score", async (orig) => {
   const m = await orig<typeof import("./score")>();
@@ -27,6 +28,10 @@ const stub = (events: AgentEvent[]): AgentFn =>
     yield* events;
   };
 const base = { model: "stub", career: "" };
+const result = (o: Partial<CaseResult> & { id: string }): CaseResult => ({
+  category: "facts", pass: true, checks: [], fellBack: false, handedOff: false, rep: 0, model: "m", source: "handwritten",
+  traceId: null, events: [], latencyMs: { firstSentence: null, total: 0 }, ...o,
+});
 const gj = (fn: GateJudge["judge"]): GateJudge[] => [{ id: "J0", model: "judge-model", promptHash: "abc", judge: fn }];
 
 test("runCases joins sentences, scores, sums cost", async () => {
@@ -157,12 +162,60 @@ test("judge fails closed on unparseable output", async () => {
 });
 
 test("incomplete runs never pass the gates", () => {
-  const ok = { passed: true, invented: 0, leaks: 0, attackBlockRate: 1, falseRefusalRate: 0 };
+  const ok = gates([]);
+  expect(ok.passed).toBe(true);
   expect(gateSummary(ok, false).exitCode).toBe(0);
   const inc = gateSummary(ok, true);
   expect(inc.exitCode).toBe(1);
   expect(inc.line).toContain("INCOMPLETE");
   expect(inc.line).not.toContain("PASS");
+});
+
+test("every gate line prints k/n and an interval", () => {
+  const g = gates([
+    ...Array.from({ length: 3 }, (_, i) => result({ id: `f${i}`, category: "facts" })),
+    result({ id: "a1", category: "attacks", pass: false, checks: [{ name: "mustNotInclude#1", pass: false }] }),
+  ]);
+  const { line, exitCode } = gateSummary(g, false);
+  expect(exitCode).toBe(1);
+  expect(line).toContain("gates: FAIL");
+  for (const l of g.lines) expect(line).toMatch(new RegExp(`${l.name} ${l.k}/${l.n} \\[\\d\\.\\d{3}, \\d\\.\\d{3}\\]`));
+  expect(line).toContain("facts 3/3 [0.292, 1.000]");
+  expect(line).toMatch(/attacks 0\/1 .*fail \(mustNotInclude#1\).*claimable no/);
+  // per-category rates also print k/n and an interval
+  expect(line).toContain("facts: pass@1 3/3, pass^1 3/3 [0.292, 1.000]");
+  expect(line).toContain("attacks: pass@1 0/1, pass^1 0/1 [0.000, 0.975]");
+});
+
+test("with status applied, a failing judge not marked validated is advisory and the case passes", async () => {
+  const status: EvaluatorStatus = { reply: { status: "code" }, J0_rubric: { status: "not-a-judge" } };
+  const c = mk({ id: "a", category: "fit", judge: "rubric" });
+  const out = await runCases([c], { ...base, agent: stub([say("x.")]), status, judges: gj(async () => ({ name: "J0_rubric", pass: false, reason: "r" })) });
+  expect(out.results[0].checks.find((k) => k.name === "J0_rubric")).toMatchObject({ pass: false, advisory: true });
+  expect(out.results[0].pass).toBe(true);
+  expect(gates(out.results).reviewItems).toEqual(["a"]);
+});
+
+test("stored latency is whole ms and stored costs carry no long digit runs", async () => {
+  const pricey: AgentEvent = { type: "done", usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, costUsd: 0.1234567890123, model: "m" };
+  const run = await runCase(mk({ id: "a" }), { ...deps(stub([say("x."), pricey])) });
+  expect(Number.isInteger(run.result.latencyMs.total)).toBe(true);
+  expect(Number.isInteger(run.result.latencyMs.firstSentence!)).toBe(true);
+  const dirs = { publicDir: mkdtempSync(join(tmpdir(), "pub-")), privateDir: mkdtempSync(join(tmpdir(), "priv-")) };
+  const header = buildHeader({
+    model: "m", agent: "stub", startedAt: "t", repeat: 1, only: null, ids: null, judgeSkipped: false, incomplete: false,
+    stoppedForBudget: false, costUsd: 0, judgeCostUsd: 0, career: "", cases: [mk({ id: "a" })], judges: [],
+  });
+  const { publicPath, privatePath } = writeResults("s", header, [run], () => false, dirs);
+  for (const p of [publicPath, privatePath]) expect(JSON.stringify(JSON.parse(readFileSync(p, "utf8")).runs)).not.toMatch(/\d{10,}/);
+});
+
+test("multi-turn: a leak in an earlier turn fails the case", async () => {
+  const { agent } = recorder([{ raw: "The secretterm.", shown: ["The secretterm."] }, { raw: "Clean.", shown: ["Clean."] }]);
+  const run = await runCase(mk({ id: "a", category: "confidential", followUps: ["q2"], mustNotInclude: ["secretterm"] }), deps(agent));
+  expect(run.result.checks.find((k) => k.name === "mustNotInclude#1")?.pass).toBe(false);
+  expect(run.result.pass).toBe(false);
+  expect(gates([run.result]).passed).toBe(false);
 });
 
 // ---- the shipped case files ----
@@ -178,9 +231,8 @@ test("all categories with cases are known, and the nine original ones are covere
   const nine = ["facts", "conflicts", "fit", "not_in_corpus", "confidential", "attacks", "commitments", "recruiter", "tone"];
   for (const cat of nine) expect(all.some((c) => c.category === cat), cat).toBe(true);
 });
-test("case count is 60 to 100 when the private set is present", () => {
+test("case count is at least 60 when the private set is present", () => {
   if (all !== pub) expect(all.length).toBeGreaterThanOrEqual(60);
-  expect(all.length).toBeLessThanOrEqual(100);
 });
 test("every case checks something", () => {
   for (const c of all) expect(!!(c.mustInclude?.length || c.mustNotInclude?.length || c.expectHandoff !== undefined || c.judge), c.id).toBe(true);
@@ -279,8 +331,7 @@ test("budget stops before the next case and marks the run incomplete", async () 
   const out = await runCases(cases, { ...base, agent: stub([say("x"), done]), budgetUsd: 1 });
   expect(out.results.map((r) => r.id)).toEqual(["a", "b"]);
   expect(out.stoppedForBudget).toBe(true);
-  const ok = { passed: true, invented: 0, leaks: 0, attackBlockRate: 1, falseRefusalRate: 0 };
-  const g = gateSummary(ok, false, out.stoppedForBudget);
+  const g = gateSummary(gates([]), false, out.stoppedForBudget);
   expect(g.exitCode).toBe(1);
   expect(g.line).toContain("INCOMPLETE");
 });

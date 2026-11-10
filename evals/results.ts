@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SYSTEM_PROMPT } from "../src/prompt";
-import type { CaseResult, EvalCase, Msg, Turn } from "../src/types";
+import type { AgentEvent, CaseResult, EvalCase, Msg, Turn } from "../src/types";
 import type { CaseRun, GateJudge, LoadedCase } from "./run";
 
 /*
@@ -130,6 +130,10 @@ export function buildHeader(o: {
   };
 }
 
+/** Stored costs are rounded to 6 decimals, so long digit runs never reach the files (or the blocklist scan). */
+const usd = (x: number) => +x.toFixed(6);
+const roundCost = (e: AgentEvent): AgentEvent => (e.type === "done" ? { ...e, costUsd: usd(e.costUsd) } : e);
+
 export function toStored(run: CaseRun): StoredRun {
   const r = run.result;
   const turns = r.turns ?? [];
@@ -145,12 +149,12 @@ export function toStored(run: CaseRun): StoredRun {
     history: run.history,
     followUps: turns.slice(1).map((t) => t.question),
     reply: r.reply ?? "",
-    turns,
-    events: r.events,
+    turns: turns.map((t) => ({ ...t, events: t.events.map(roundCost) })),
+    events: r.events.map(roundCost),
     checks: r.checks,
     pass: r.pass,
     latencyMs: r.latencyMs,
-    spend: run.spend,
+    spend: { ...run.spend, costUsd: usd(run.spend.costUsd), judgeCostUsd: usd(run.spend.judgeCostUsd) },
     rawText: run.rawText,
   };
 }
