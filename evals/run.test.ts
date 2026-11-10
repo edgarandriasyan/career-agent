@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 import type { AgentEvent, EvalCase, Msg } from "../src/types";
 import {
-  CATEGORIES, finalStateChecks, formatRun, gateSummary, J0, judgesFor, loadCases, resolveAgent, runCase, runCases,
+  CATEGORIES, finalStateChecks, formatRun, gateSummary, J0, judgeHeaders, judgesFor, loadCases, resolveAgent, runCase, runCases,
   type AgentFn, type GateJudge, type LoadedCase,
 } from "./run";
-import { judge, JUDGE_PROMPT, JUDGE_SYSTEM } from "./judge";
-import { buildHeader, redact, sha12, writeResults } from "./results";
+import type { JudgeClient } from "./judge";
+import { judgePromptHash } from "./judges/request";
+import { J0_RUBRIC } from "./judges/rubric";
+import { buildHeader, redact, writeResults } from "./results";
 import { gates, scoreDeterministic, type EvaluatorStatus } from "./score";
 import type { CaseResult } from "../src/types";
 
@@ -32,7 +34,19 @@ const result = (o: Partial<CaseResult> & { id: string }): CaseResult => ({
   category: "facts", pass: true, checks: [], fellBack: false, handedOff: false, rep: 0, model: "m", source: "handwritten",
   traceId: null, events: [], latencyMs: { firstSentence: null, total: 0 }, ...o,
 });
-const gj = (fn: GateJudge["judge"]): GateJudge[] => [{ id: "J0", model: "judge-model", promptHash: "abc", judge: fn }];
+const j0: GateJudge[] = [{ spec: J0_RUBRIC, model: "claude-sonnet-5-5" }];
+/** A fake judge client: answers with this critique and result (and usage), or throws. */
+const says = (critique: string, result: string, usage?: { input_tokens: number; output_tokens: number }): JudgeClient => ({
+  messages: { create: async () => ({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ critique, result }) }], usage }) },
+});
+const stops = (stop_reason: string): JudgeClient => ({ messages: { create: async () => ({ stop_reason, content: [] }) } });
+const throwing: JudgeClient = {
+  messages: {
+    create: async () => {
+      throw new Error("net secretterm");
+    },
+  },
+};
 
 test("runCases joins sentences, scores, sums cost", async () => {
   const { results, costUsd } = await runCases([mk({ id: "a", mustInclude: ["8%"] })], { ...base, agent: stub([say("Grew 8%."), say("Good."), done]) });
@@ -60,35 +74,57 @@ test("--only filters and --repeat repeats", async () => {
 
 test("rubric cases use the injected judge, and fail when it fails", async () => {
   const c = mk({ id: "a", judge: "rubric" });
-  const pass = await runCases([c], { ...base, agent: stub([say("x")]), judges: gj(async () => ({ name: "judge", pass: true })) });
-  const fail = await runCases([c], { ...base, agent: stub([say("x")]), judges: gj(async () => ({ name: "judge", pass: false, reason: "r" })) });
+  const pass = await runCases([c], { ...base, agent: stub([say("x")]), judges: j0, judgeClient: says("fine", "Pass") });
+  const fail = await runCases([c], { ...base, agent: stub([say("x")]), judges: j0, judgeClient: says("r", "Fail") });
   expect([pass.results[0].pass, fail.results[0].pass]).toEqual([true, false]);
 });
 
 test("without a judge, rubric cases are skipped and flagged", async () => {
   const out = await runCases([mk({ id: "a", judge: "rubric" })], { ...base, agent: stub([say("x")]) });
   expect(out.judgeSkipped).toBe(true);
-  expect(out.results[0].checks.some((k) => k.name === "judge")).toBe(false);
+  expect(out.results[0].checks.some((k) => k.name === "J0_rubric")).toBe(false);
 });
 
 test("a throwing judge fails the case", async () => {
-  const { results } = await runCases([mk({ id: "a", judge: "rubric" })], {
-    ...base,
-    agent: stub([say("x")]),
-    judges: gj(async () => {
-      throw new Error("net");
-    }),
-  });
+  const { results } = await runCases([mk({ id: "a", judge: "rubric" })], { ...base, agent: stub([say("x")]), judges: j0, judgeClient: throwing });
   expect(results[0].pass).toBe(false);
+  expect(JSON.stringify(results)).not.toContain("secretterm");
 });
 
-test("private judge reasons are redacted from the public file and console, kept in the private file", async () => {
+test("the J0 check is named J0_rubric, also when the judge throws", async () => {
+  const c = mk({ id: "a", judge: "rubric" });
+  const unjudged = (await runCases([c], { ...base, agent: stub([say("x")]) })).results[0].checks.map((k) => k.name);
+  for (const judgeClient of [says("ok", "Pass"), says("no", "Fail"), stops("refusal"), stops("max_tokens"), throwing]) {
+    const { results } = await runCases([c], { ...base, agent: stub([say("x")]), judges: j0, judgeClient });
+    expect(results[0].checks.map((k) => k.name).filter((n) => !unjudged.includes(n))).toEqual(["J0_rubric"]);
+  }
+  const status = JSON.parse(readFileSync(resolve(__dirname, "validation/status.json"), "utf8"));
+  expect(status).toHaveProperty("J0_rubric");
+  expect(J0.spec.id).toBe("J0_rubric");
+});
+
+test("judge errors are reported as judge error: <kind>, never a Pass", async () => {
+  const c = mk({ id: "a", judge: "rubric" });
+  for (const [judgeClient, kind] of [[stops("refusal"), "refusal"], [stops("max_tokens"), "max_tokens"], [says("x", "maybe"), "invalid"], [throwing, "api_error"]] as const) {
+    const { results } = await runCases([c], { ...base, agent: stub([say("x")]), judges: j0, judgeClient });
+    expect(results[0].checks.find((k) => k.name === "J0_rubric")).toMatchObject({ pass: false, reason: `judge error: ${kind}` });
+  }
+});
+
+test("once J0_rubric is validated, its failures and errors gate; before that they are advisory", async () => {
+  const c = mk({ id: "a", category: "fit", judge: "rubric" });
+  for (const judgeClient of [says("no", "Fail"), stops("refusal"), throwing]) {
+    const validated = await runCases([c], { ...base, agent: stub([say("x.")]), judges: j0, judgeClient, status: { J0_rubric: { status: "validated" } } });
+    expect(validated.results[0].checks.find((k) => k.name === "J0_rubric")?.advisory).toBeUndefined();
+    expect(validated.results[0].pass).toBe(false);
+    const notYet = await runCases([c], { ...base, agent: stub([say("x.")]), judges: j0, judgeClient, status: { J0_rubric: { status: "not-a-judge" } } });
+    expect(notYet.results[0].checks.find((k) => k.name === "J0_rubric")).toMatchObject({ pass: false, advisory: true });
+  }
+});
+
+test("private judge critiques are redacted", async () => {
   const c = mk({ id: "a", isPrivate: true, judge: "r" });
-  const { runs } = await runCases([c], {
-    ...base,
-    agent: stub([say("x")]),
-    judges: gj(async () => ({ name: "judge", pass: false, reason: "mentions secretterm" })),
-  });
+  const { runs } = await runCases([c], { ...base, agent: stub([say("x")]), judges: j0, judgeClient: says("mentions secretterm", "Fail") });
   const dirs = { publicDir: mkdtempSync(join(tmpdir(), "pub-")), privateDir: mkdtempSync(join(tmpdir(), "priv-")) };
   const header = buildHeader({
     model: "m", agent: "stub", startedAt: "t", repeat: 1, only: null, ids: null, judgeSkipped: false, incomplete: false,
@@ -100,6 +136,15 @@ test("private judge reasons are redacted from the public file and console, kept 
   expect(readFileSync(privatePath, "utf8")).toContain("mentions secretterm");
 });
 
+test("console critiques are cut to 300 characters; results files keep the full text", async () => {
+  const long = "q".repeat(400);
+  const { runs } = await runCases([mk({ id: "a", judge: "r" })], { ...base, agent: stub([say("x")]), judges: j0, judgeClient: says(long, "Fail") });
+  const line = formatRun(runs[0], false).find((l) => l.includes("J0_rubric"))!;
+  expect(line).toContain("q".repeat(300));
+  expect(line).not.toContain("q".repeat(301));
+  expect(runs[0].result.checks.find((k) => k.name === "J0_rubric")?.reason).toBe(long);
+});
+
 test("a stub run never calls the paid judge", () => {
   expect(judgesFor("stub", false)).toEqual([]);
   expect(judgesFor("stub", true)).toEqual([]);
@@ -107,11 +152,9 @@ test("a stub run never calls the paid judge", () => {
   expect(judgesFor("real", true)).toEqual([]);
 });
 
-test("J0's prompt hash covers the system text and the user-message template", () => {
-  expect(JUDGE_PROMPT).toContain(JUDGE_SYSTEM);
-  expect(JUDGE_PROMPT).toContain("<rubric>");
-  expect(JUDGE_PROMPT).toContain("(no reply;");
-  expect(J0.promptHash).toBe(sha12(JUDGE_PROMPT));
+test("header judges list each GateJudge with its model and prompt hash", async () => {
+  expect(await judgeHeaders(j0)).toEqual([{ id: "J0_rubric", model: "claude-sonnet-5-5", promptHash: await judgePromptHash(J0_RUBRIC) }]);
+  expect(await judgeHeaders([])).toEqual([]);
 });
 
 test("redact keeps only id, category and pass", () =>
@@ -125,41 +168,6 @@ test("redact keeps only id, category and pass", () =>
     category: "facts",
     pass: true,
   }));
-
-test("judge sends rubric, reply and corpus only, with the pinned model and no sampling params", async () => {
-  let params: any;
-  const client = {
-    messages: {
-      create: async (p: any) => {
-        params = p;
-        return { content: [{ type: "text", text: 'Here: {"pass": true, "reason": "fine"}' }] };
-      },
-    },
-  };
-  const r = await judge({ id: "a", category: "fit", question: "SECRET-QUESTION", judge: "RUBRIC-TEXT" }, "REPLY-TEXT", { client, corpus: "CORPUS-TEXT" });
-  expect(r).toEqual({ name: "judge", pass: true, reason: "fine" });
-  expect(params.model).toBe("claude-sonnet-5-5");
-  const sent = JSON.stringify(params);
-  for (const s of ["RUBRIC-TEXT", "REPLY-TEXT", "CORPUS-TEXT"]) expect(sent).toContain(s);
-  expect(sent).not.toContain("SECRET-QUESTION");
-  for (const k of ["temperature", "top_p", "top_k", "thinking", "tools"]) expect(params).not.toHaveProperty(k);
-  // Low effort and room for thinking, so the JSON is not cut off by max_tokens.
-  expect(params.output_config).toEqual({ effort: "low" });
-  expect(params.max_tokens).toBe(1024);
-  // The corpus is a cached system block; the per-case rubric and reply come after it.
-  const corpusBlock = params.system.at(-1);
-  expect(corpusBlock.text).toContain("CORPUS-TEXT");
-  expect(corpusBlock.cache_control).toEqual({ type: "ephemeral" });
-  const user = JSON.stringify(params.messages);
-  expect(user).toContain("RUBRIC-TEXT");
-  expect(user).toContain("REPLY-TEXT");
-  expect(user).not.toContain("CORPUS-TEXT");
-});
-
-test("judge fails closed on unparseable output", async () => {
-  const client = { messages: { create: async () => ({ content: [{ type: "text", text: "looks good" }] }) } };
-  expect((await judge({ id: "a", category: "fit", question: "q", judge: "r" }, "x", { client, corpus: "c" })).pass).toBe(false);
-});
 
 test("incomplete runs never pass the gates", () => {
   const ok = gates([]);
@@ -190,7 +198,7 @@ test("every gate line prints k/n and an interval", () => {
 test("with status applied, a failing judge not marked validated is advisory and the case passes", async () => {
   const status: EvaluatorStatus = { reply: { status: "code" }, J0_rubric: { status: "not-a-judge" } };
   const c = mk({ id: "a", category: "fit", judge: "rubric" });
-  const out = await runCases([c], { ...base, agent: stub([say("x.")]), status, judges: gj(async () => ({ name: "J0_rubric", pass: false, reason: "r" })) });
+  const out = await runCases([c], { ...base, agent: stub([say("x.")]), status, judges: j0, judgeClient: says("r", "Fail") });
   expect(out.results[0].checks.find((k) => k.name === "J0_rubric")).toMatchObject({ pass: false, advisory: true });
   expect(out.results[0].pass).toBe(true);
   expect(gates(out.results).reviewItems).toEqual(["a"]);
@@ -254,26 +262,14 @@ test("per-case spend and judge cost are reported, and judge cost stays out of ch
   const out = await runCases([mk({ id: "a", judge: "r" })], {
     ...base,
     agent: stub([say("x"), done]),
-    judges: gj(async () => ({ name: "judge", pass: true, costUsd: 0.25 })),
+    judges: j0,
+    judgeClient: says("ok", "Pass", { input_tokens: 125_000, output_tokens: 0 }),
     onResult: (run) => seen.push(run.spend),
   });
   expect(seen).toEqual([{ usage: done.type === "done" ? done.usage : undefined, costUsd: 0.5, judgeCostUsd: 0.25 }]);
   expect(out.costUsd).toBe(0.5);
   expect(out.judgeCostUsd).toBe(0.25);
   expect(JSON.stringify(out.results[0].checks)).not.toContain("costUsd");
-});
-
-test("judge reports its cost from usage", async () => {
-  const client = {
-    messages: {
-      create: async () => ({
-        content: [{ type: "text", text: '{"pass": true, "reason": "ok"}' }],
-        usage: { input_tokens: 1_000_000, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
-      }),
-    },
-  };
-  const r = await judge({ id: "a", category: "fit", question: "q", judge: "r" }, "x", { client, corpus: "c" });
-  expect(r.costUsd).toBeCloseTo(2);
 });
 
 // ---- E1: full trace capture and runCase ----

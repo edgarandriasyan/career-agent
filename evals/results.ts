@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SYSTEM_PROMPT } from "../src/prompt";
 import type { AgentEvent, CaseResult, EvalCase, Msg, Turn } from "../src/types";
-import type { CaseRun, GateJudge, LoadedCase } from "./run";
+import type { CaseRun, LoadedCase } from "./run";
 
 /*
  * Results files. Every run writes two:
@@ -19,6 +19,8 @@ import type { CaseRun, GateJudge, LoadedCase } from "./run";
 const PUBLIC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIRS = { publicDir: join(PUBLIC_ROOT, "evals/results"), privateDir: resolve(PUBLIC_ROOT, "../private/evals/results") };
 
+/** One judge used by a run, as the header records it. */
+export type JudgeHeader = { id: string; model: string; promptHash: string };
 export type RunHeader = {
   model: string;
   agent: "real" | "stub";
@@ -36,7 +38,7 @@ export type RunHeader = {
   corpusHash: string;
   caseSetVersion: string;
   sdkVersions: { anthropic: string; deepeval: string | null; phoenixClient: string | null; phoenixOtel: string | null; node: string };
-  judges: { id: string; model: string; promptHash: string }[];
+  judges: JudgeHeader[];
   gitSha: string;
   experimentId?: string;
 };
@@ -108,7 +110,7 @@ export function buildHeader(o: {
   judgeCostUsd: number;
   career: string;
   cases: LoadedCase[];
-  judges: GateJudge[];
+  judges: JudgeHeader[];
   system?: string;
 }): RunHeader {
   const { career, cases, judges, system, ...rest } = o;
@@ -125,7 +127,7 @@ export function buildHeader(o: {
       phoenixOtel: pkgVersion("@arizeai/phoenix-otel"),
       node: process.version,
     },
-    judges: judges.map((j) => ({ id: j.id, model: j.model, promptHash: j.promptHash })),
+    judges,
     gitSha: gitSha(),
   };
 }

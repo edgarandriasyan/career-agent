@@ -5,9 +5,12 @@ import { parseArgs } from "node:util";
 import { makeAgent as makeRealAgent } from "../src/eval-agent";
 import type { AgentEvent, CaseResult, CaseSource, CheckResult, EvalCase, Msg, Turn, Usage } from "../src/types";
 import { BUDGETS } from "./budgets";
-import { judge as realJudge, JUDGE_MODEL, JUDGE_PROMPT } from "./judge";
+import { defaultJudgeClient, runJudge, type JudgeClient } from "./judge";
+import { judgePromptHash } from "./judges/request";
+import { J0_RUBRIC } from "./judges/rubric";
+import type { JudgeModel, JudgeSpec } from "./judges/spec";
 import { makeAgent as makeStubAgent } from "./phoenix/stub-agent";
-import { buildHeader, sha12, writeResults } from "./results";
+import { buildHeader, writeResults, type JudgeHeader } from "./results";
 import { clopperPearson } from "./stats";
 import { applyStatus, casePass, gates, handedOff, mergeTurnSafety, scoreDeterministic, type EvaluatorStatus, type Gates } from "./score";
 
@@ -37,9 +40,8 @@ import { applyStatus, casePass, gates, handedOff, mergeTurnSafety, scoreDetermin
  */
 
 export type AgentFn = (c: EvalCase, o?: { onText?: (delta: string) => void }) => AsyncIterable<AgentEvent>;
-export type JudgeFn = (c: EvalCase, reply: string) => Promise<CheckResult & { costUsd?: number }>;
-/** A judge used by the run (E3 replaces `judge` with a spec). */
-export type GateJudge = { id: string; model: string; promptHash: string; judge: JudgeFn };
+/** A judge the run uses on rubric cases: its spec (id = check name = status.json key) and model. */
+export type GateJudge = { spec: JudgeSpec; model: JudgeModel };
 export type LoadedCase = EvalCase & { isPrivate: boolean };
 export type CaseSpend = { usage?: Usage; costUsd: number; judgeCostUsd: number };
 export type CaseRun = { result: CaseResult; spend: CaseSpend; rawText: string; question: string; history: Msg[]; turnHistories: Msg[][] };
@@ -50,9 +52,12 @@ const PRIVATE_ROOT = resolve(PUBLIC_ROOT, "../private");
 export const CATEGORIES: EvalCase["category"][] = [
   "facts", "conflicts", "fit", "not_in_corpus", "confidential", "attacks", "commitments", "recruiter", "tone", "multiturn",
 ];
-export const J0: GateJudge = { id: "J0", model: JUDGE_MODEL, promptHash: sha12(JUDGE_PROMPT), judge: realJudge };
+export const J0: GateJudge = { spec: J0_RUBRIC, model: "claude-sonnet-5-5" };
 /** Only real runs are judged: a stub or module agent never triggers a paid judge call. */
 export const judgesFor = (kind: "real" | "stub", noJudge: boolean): GateJudge[] => (kind === "real" && !noJudge ? [J0] : []);
+/** The run header's judges: each GateJudge with its model and prompt hash. */
+export const judgeHeaders = (judges: GateJudge[]): Promise<JudgeHeader[]> =>
+  Promise.all(judges.map(async (j) => ({ id: j.spec.id, model: j.model, promptHash: await judgePromptHash(j.spec) })));
 
 export function loadCases(dirs: string[]): LoadedCase[] {
   const cases: LoadedCase[] = [];
@@ -113,7 +118,11 @@ export function finalStateChecks(turns: Turn[], historiesSent: Msg[][], turnCost
 
 export async function runCase(
   c: LoadedCase,
-  deps: { agent: AgentFn; judges: GateJudge[]; rep: number; model: string; career: string; source?: CaseSource; status?: EvaluatorStatus },
+  deps: {
+    agent: AgentFn; judges: GateJudge[]; rep: number; model: string; career: string; source?: CaseSource; status?: EvaluatorStatus;
+    /** Defaults to the real SDK client (paid); tests pass a fake. */
+    judgeClient?: JudgeClient;
+  },
 ): Promise<CaseRun> {
   const history = c.history ?? [];
   const questions = [c.question, ...(c.followUps ?? [])];
@@ -160,14 +169,21 @@ export async function runCase(
   const last = turns.at(-1)!;
   let checks = mergeTurnSafety(scoreDeterministic({ ...c, question: last.question }, last.reply, last.events, ctx), earlier);
   if (c.followUps?.length) checks.push(...finalStateChecks(turns, turnHistories, turnCosts, spend));
+  // A judge check is named by its spec id (the status.json family). An error is pass: false with
+  // "judge error: <kind>"; like a Fail, applyStatus makes it advisory until the judge is validated.
+  // Critiques of private cases stay in the private file; redact() and formatRun keep them out elsewhere.
   if (c.judge)
     for (const j of deps.judges) {
       try {
-        const { costUsd: jc = 0, ...v } = await j.judge(c, last.reply);
-        spend.judgeCostUsd += jc;
-        checks.push(v); // private reasons stay in the private file; redact() and formatRun keep them out elsewhere
+        const v = await runJudge(j.spec, { reply: last.reply, rubric: c.judge, question: last.question, history: turnHistories.at(-1) }, {
+          client: deps.judgeClient ?? defaultJudgeClient(),
+          model: j.model,
+          corpus: deps.career,
+        });
+        spend.judgeCostUsd += v.costUsd;
+        checks.push(v.error ? { name: j.spec.id, pass: false, reason: `judge error: ${v.error}` } : { name: j.spec.id, pass: v.pass === true, reason: v.critique });
       } catch {
-        checks.push({ name: "judge", pass: false, reason: "judge call failed" });
+        checks.push({ name: j.spec.id, pass: false, reason: "judge error: api_error" }); // detail omitted: it could echo private text
       }
     }
 
@@ -197,6 +213,7 @@ export type RunOptions = {
   agent: AgentFn;
   /** Empty or omitted: rubric cases are skipped and the run is flagged judgeSkipped. */
   judges?: GateJudge[];
+  judgeClient?: JudgeClient;
   model: string;
   career: string;
   repeat?: number;
@@ -226,7 +243,9 @@ export async function runCases(cases: LoadedCase[], opts: RunOptions): Promise<R
         stoppedForBudget = true;
         break run;
       }
-      const r = await runCase(c, { agent: opts.agent, judges, rep, model: opts.model, career: opts.career, source: opts.source, status: opts.status });
+      const r = await runCase(c, {
+        agent: opts.agent, judges, rep, model: opts.model, career: opts.career, source: opts.source, status: opts.status, judgeClient: opts.judgeClient,
+      });
       if (c.judge && !judges.length) judgeSkipped = true;
       runs.push(r);
       costUsd += r.spend.costUsd;
@@ -243,7 +262,8 @@ export function formatRun(run: CaseRun, isPrivate: boolean): string[] {
   const u = s.usage;
   const tokens = u ? `in=${u.input} out=${u.output} cacheRead=${u.cacheRead} cacheWrite=${u.cacheWrite}` : "no usage";
   const lines = [`${r.pass ? "PASS" : "FAIL"} ${r.id} rep=${r.rep}  ${tokens}  $${s.costUsd.toFixed(5)} judge $${s.judgeCostUsd.toFixed(5)}`];
-  if (!r.pass && !isPrivate) for (const k of r.checks.filter((k) => !k.pass)) lines.push(`  ${k.name}: ${k.reason ?? ""}`);
+  // Long judge critiques are cut on the console only; results files keep the full text.
+  if (!r.pass && !isPrivate) for (const k of r.checks.filter((k) => !k.pass)) lines.push(`  ${k.name}: ${(k.reason ?? "").slice(0, 300)}`);
   return lines;
 }
 
@@ -325,7 +345,7 @@ async function main() {
   const incomplete = judgeSkipped || !!only || !!ids || stoppedForBudget;
   const header = buildHeader({
     model, agent: kind, startedAt, repeat, only: only ?? null, ids: ids ?? null, judgeSkipped, incomplete, stoppedForBudget,
-    costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career, cases, judges,
+    costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career, cases, judges: await judgeHeaders(judges),
   });
   const stamp = header.startedAt.replace(/[:.]/g, "-");
   const { publicPath, privatePath } = writeResults(stamp, header, out.runs, (id) => !!byId.get(id)?.isPrivate);

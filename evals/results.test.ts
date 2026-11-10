@@ -6,6 +6,7 @@ import { SYSTEM_PROMPT } from "../src/prompt";
 import type { AgentEvent } from "../src/types";
 import { BUDGETS } from "./budgets";
 import { runCase, type AgentFn, type GateJudge, type LoadedCase } from "./run";
+import type { JudgeHeader } from "./results";
 import { buildHeader, caseSetVersion, sha12, writeResults, type ResultsFile } from "./results";
 
 const mk = (o: Partial<LoadedCase> & { id: string }): LoadedCase => ({ category: "facts", question: "q", isPrivate: false, ...o });
@@ -16,8 +17,8 @@ const blockedAgent: AgentFn = async function* (_c, o) {
   yield { type: "done", usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, costUsd: 0.5, model: "m" } as AgentEvent;
 };
 const deps = { agent: blockedAgent, judges: [] as GateJudge[], rep: 0, model: "m", career: "C" };
-const J0: GateJudge = { id: "J0", model: "judge-model", promptHash: "abcdefabcdef", judge: async () => ({ name: "judge", pass: true }) };
-const headerFor = (cases: LoadedCase[], judges: GateJudge[] = []) =>
+const J0: JudgeHeader = { id: "J0_rubric", model: "claude-sonnet-5-5", promptHash: "abcdefabcdef" };
+const headerFor = (cases: LoadedCase[], judges: JudgeHeader[] = []) =>
   buildHeader({
     model: "m", agent: "stub", startedAt: "2026-01-01T00:00:00.000Z", repeat: 1, only: null, ids: null, judgeSkipped: false, incomplete: false,
     stoppedForBudget: false, costUsd: 0, judgeCostUsd: 0, career: "CAREER", cases, judges,
@@ -80,7 +81,7 @@ test("caseSetVersion changes when any case line changes", () => {
 });
 
 test("header lists every judge used with model and prompt hash", () => {
-  expect(headerFor([mk({ id: "a" })], [J0]).judges).toEqual([{ id: "J0", model: "judge-model", promptHash: "abcdefabcdef" }]);
+  expect(headerFor([mk({ id: "a" })], [J0]).judges).toEqual([{ id: "J0_rubric", model: "claude-sonnet-5-5", promptHash: "abcdefabcdef" }]);
   expect(headerFor([mk({ id: "a" })]).judges).toEqual([]);
 });
 

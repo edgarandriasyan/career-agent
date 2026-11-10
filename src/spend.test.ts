@@ -17,3 +17,8 @@ test("Sonnet 5.5 rates", () => {
 test("an unknown model throws instead of guessing", () => {
   expect(() => costUsd("claude-unknown", { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 })).toThrow();
 });
+
+test("Opus rates price one million input tokens at $4", () => {
+  expect(costUsd("claude-opus-5-5", { input: M, output: 0, cacheRead: 0, cacheWrite: 0 })).toBeCloseTo(4);
+  expect(costUsd("claude-opus-5-5", { input: 0, output: M, cacheRead: M, cacheWrite: M })).toBeCloseTo(20 + 0.2 + 5);
+});
