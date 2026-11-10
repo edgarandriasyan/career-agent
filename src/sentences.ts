@@ -37,6 +37,11 @@ export class SentenceSegmenter {
     return out;
   }
 
+  /** True when unfinished, non-blank text is waiting for the next chunk. */
+  get pending(): boolean {
+    return this.buf.trim() !== "";
+  }
+
   flush(): string[] {
     const out: string[] = [];
     this.emit(out, this.buf);

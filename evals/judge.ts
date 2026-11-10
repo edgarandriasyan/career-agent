@@ -1,12 +1,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { costUsd } from "../src/spend";
 import type { CheckResult, EvalCase } from "../src/types";
 
 /*
  * LLM judge for rubric cases that string checks cannot decide.
  * Sees only the case's rubric, the reply and career.md (never the question or the private master).
- * Calls claude-sonnet-5-5 (a paid call). The API key comes from the ANTHROPIC_API_KEY environment
+ * Calls claude-sonnet-5-5 (a paid call) at effort low, with room for its adaptive thinking so the
+ * JSON is not cut off. career.md is a cached system block, so a sequential run pays for it once and
+ * reads it after that; the per-case rubric and reply follow in the user message. The API key comes from the ANTHROPIC_API_KEY environment
  * variable, read by the SDK; this file never reads or prints it. Tests inject a stub client.
  */
 
@@ -18,9 +21,18 @@ export type JudgeClient = {
     create(params: {
       model: string;
       max_tokens: number;
-      system: string;
+      output_config: { effort: "low" };
+      system: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[];
       messages: { role: "user"; content: string }[];
-    }): Promise<{ content: { type: string; text?: string }[] }>;
+    }): Promise<{
+      content: { type: string; text?: string }[];
+      usage?: {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_input_tokens?: number | null;
+        cache_creation_input_tokens?: number | null;
+      };
+    }>;
   };
 };
 
@@ -38,27 +50,42 @@ export async function judge(
   c: EvalCase,
   reply: string,
   deps: { client?: JudgeClient; corpus?: string } = {},
-): Promise<CheckResult> {
+): Promise<CheckResult & { costUsd?: number }> {
   const client = deps.client ?? (defaultClient ??= new Anthropic() as unknown as JudgeClient);
   const corpus = deps.corpus ?? readFileSync(CORPUS_PATH, "utf8");
   const res = await client.messages.create({
     model: JUDGE_MODEL,
-    max_tokens: 300,
-    system: SYSTEM,
+    max_tokens: 1024,
+    output_config: { effort: "low" },
+    system: [
+      { type: "text", text: SYSTEM },
+      { type: "text", text: `<corpus>\n${corpus}\n</corpus>`, cache_control: { type: "ephemeral" } },
+    ],
     messages: [
       {
         role: "user",
-        content: `<rubric>\n${c.judge}\n</rubric>\n\n<reply>\n${reply || "(no reply; the visitor saw the static contact message)"}\n</reply>\n\n<corpus>\n${corpus}\n</corpus>`,
+        content: `<rubric>\n${c.judge}\n</rubric>\n\n<reply>\n${reply || "(no reply; the visitor saw the static contact message)"}\n</reply>`,
       },
     ],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text ?? "" : "")).join("");
+  const u = res.usage;
+  const spend = u
+    ? {
+        costUsd: costUsd(JUDGE_MODEL, {
+          input: u.input_tokens,
+          output: u.output_tokens,
+          cacheRead: u.cache_read_input_tokens ?? 0,
+          cacheWrite: u.cache_creation_input_tokens ?? 0,
+        }),
+      }
+    : {};
   const m = text.match(/\{[\s\S]*\}/);
   try {
     const v = JSON.parse(m?.[0] ?? "");
     if (typeof v.pass !== "boolean") throw 0;
-    return { name: "judge", pass: v.pass, reason: String(v.reason ?? "").slice(0, 300) };
+    return { name: "judge", pass: v.pass, reason: String(v.reason ?? "").slice(0, 300), ...spend };
   } catch {
-    return { name: "judge", pass: false, reason: "judge output was not valid JSON" };
+    return { name: "judge", pass: false, reason: "judge output was not valid JSON", ...spend };
   }
 }

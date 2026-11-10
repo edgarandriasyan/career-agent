@@ -91,7 +91,18 @@ test("judge sends rubric, reply and corpus only, with the pinned model and no sa
   const sent = JSON.stringify(params);
   for (const s of ["RUBRIC-TEXT", "REPLY-TEXT", "CORPUS-TEXT"]) expect(sent).toContain(s);
   expect(sent).not.toContain("SECRET-QUESTION");
-  for (const k of ["temperature", "top_p", "top_k"]) expect(params).not.toHaveProperty(k);
+  for (const k of ["temperature", "top_p", "top_k", "thinking", "tools"]) expect(params).not.toHaveProperty(k);
+  // Low effort and room for thinking, so the JSON is not cut off by max_tokens.
+  expect(params.output_config).toEqual({ effort: "low" });
+  expect(params.max_tokens).toBe(1024);
+  // The corpus is a cached system block; the per-case rubric and reply come after it.
+  const corpusBlock = params.system.at(-1);
+  expect(corpusBlock.text).toContain("CORPUS-TEXT");
+  expect(corpusBlock.cache_control).toEqual({ type: "ephemeral" });
+  const user = JSON.stringify(params.messages);
+  expect(user).toContain("RUBRIC-TEXT");
+  expect(user).toContain("REPLY-TEXT");
+  expect(user).not.toContain("CORPUS-TEXT");
 });
 
 test("judge fails closed on unparseable output", async () => {
@@ -136,4 +147,30 @@ test("fact cases name sections that exist in career.md", () => {
 test("English, Russian and Armenian questions are present", () => {
   expect(pub.some((c) => /[а-яё]/i.test(c.question))).toBe(true);
   expect(pub.some((c) => /[Ա-֏]/.test(c.question))).toBe(true);
+});
+
+test("per-case spend and judge cost are reported, and judge cost stays out of checks", async () => {
+  const seen: { costUsd: number; judgeCostUsd: number; usage?: unknown }[] = [];
+  const out = await runCases([mk({ id: "a", judge: "r" })], {
+    agent: stub([say("x"), done]),
+    judge: async () => ({ name: "judge", pass: true, costUsd: 0.25 }),
+    onResult: (_r, _c, spend) => seen.push(spend),
+  });
+  expect(seen).toEqual([{ usage: done.type === "done" ? done.usage : undefined, costUsd: 0.5, judgeCostUsd: 0.25 }]);
+  expect(out.costUsd).toBe(0.5);
+  expect(out.judgeCostUsd).toBe(0.25);
+  expect(JSON.stringify(out.results[0].checks)).not.toContain("costUsd");
+});
+
+test("judge reports its cost from usage", async () => {
+  const client = {
+    messages: {
+      create: async () => ({
+        content: [{ type: "text", text: '{"pass": true, "reason": "ok"}' }],
+        usage: { input_tokens: 1_000_000, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+      }),
+    },
+  };
+  const r = await judge({ id: "a", category: "fit", question: "q", judge: "r" }, "x", { client, corpus: "c" });
+  expect(r.costUsd).toBeCloseTo(2);
 });

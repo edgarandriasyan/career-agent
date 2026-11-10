@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../src/types";
+import type { AgentEvent, CaseResult, CheckResult, EvalCase, Usage } from "../src/types";
 import { judge as realJudge } from "./judge";
 import { gates, handedOff, scoreDeterministic, type Gates } from "./score";
 
@@ -14,8 +14,11 @@ import { gates, handedOff, scoreDeterministic, type Gates } from "./score";
  *
  * The agent is injected: an AgentFn takes a case (question and optional history) and yields the
  * same AgentEvents the production Worker streams. `--agent` names a module whose export
- * `makeAgent(model: string): AgentFn` builds it; the default is src/eval-agent.ts, which Task 6
- * provides on top of answer(). Tests and stub runs call runCases() directly with a stub.
+ * `makeAgent(model: string): AgentFn` builds it; the default is src/eval-agent.ts, which runs
+ * answer() with a real Anthropic client (the SDK reads ANTHROPIC_API_KEY itself), career.md and
+ * ../private/blocklist.json. Tests and stub runs call runCases() directly with a stub.
+ *
+ * Each case prints its token usage and cost (agent and judge), and the run prints totals.
  *
  * Running the real agent or the judge calls a paid model. Get Edgar's cost approval first.
  * Use --no-judge to skip rubric cases (recorded as judgeSkipped) for a cheaper partial run.
@@ -28,7 +31,7 @@ import { gates, handedOff, scoreDeterministic, type Gates } from "./score";
  */
 
 export type AgentFn = (c: EvalCase) => AsyncIterable<AgentEvent>;
-export type JudgeFn = (c: EvalCase, reply: string) => Promise<CheckResult>;
+export type JudgeFn = (c: EvalCase, reply: string) => Promise<CheckResult & { costUsd?: number }>;
 export type LoadedCase = EvalCase & { isPrivate: boolean };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -71,13 +74,15 @@ export type RunOptions = {
   judge?: JudgeFn;
   repeat?: number;
   only?: EvalCase["category"];
-  onResult?: (r: CaseResult, c: LoadedCase) => void;
+  onResult?: (r: CaseResult, c: LoadedCase, spend: CaseSpend) => void;
 };
-export type RunOutput = { results: CaseResult[]; costUsd: number; judgeSkipped: boolean };
+export type CaseSpend = { usage?: Usage; costUsd: number; judgeCostUsd: number };
+export type RunOutput = { results: CaseResult[]; costUsd: number; judgeCostUsd: number; judgeSkipped: boolean };
 
 export async function runCases(cases: LoadedCase[], opts: RunOptions): Promise<RunOutput> {
   const results: CaseResult[] = [];
   let costUsd = 0;
+  let judgeCostUsd = 0;
   let judgeSkipped = false;
   const selected = opts.only ? cases.filter((c) => c.category === opts.only) : cases;
   for (let rep = 0; rep < (opts.repeat ?? 1); rep++) {
@@ -88,13 +93,19 @@ export async function runCases(cases: LoadedCase[], opts: RunOptions): Promise<R
       } catch {
         events.push({ type: "fallback", reason: "api_error" }); // detail omitted: it could echo private text
       }
-      for (const e of events) if (e.type === "done") costUsd += e.costUsd;
+      const spend: CaseSpend = { costUsd: 0, judgeCostUsd: 0 };
+      for (const e of events)
+        if (e.type === "done") {
+          spend.usage = e.usage;
+          spend.costUsd += e.costUsd;
+        }
       const reply = events.flatMap((e) => (e.type === "sentence" ? [e.text] : [])).join(" ");
       const checks = scoreDeterministic(c, reply, events);
       if (c.judge) {
         if (opts.judge) {
           try {
-            const j = await opts.judge(c, reply);
+            const { costUsd: jc = 0, ...j } = await opts.judge(c, reply);
+            spend.judgeCostUsd += jc;
             checks.push(c.isPrivate ? { name: j.name, pass: j.pass, ...(j.pass ? {} : { reason: "judge failed" }) } : j);
           } catch {
             checks.push({ name: "judge", pass: false, reason: "judge call failed" });
@@ -111,10 +122,12 @@ export async function runCases(cases: LoadedCase[], opts: RunOptions): Promise<R
         reply,
       };
       results.push(r);
-      opts.onResult?.(r, c);
+      costUsd += spend.costUsd;
+      judgeCostUsd += spend.judgeCostUsd;
+      opts.onResult?.(r, c, spend);
     }
   }
-  return { results, costUsd, judgeSkipped };
+  return { results, costUsd, judgeCostUsd, judgeSkipped };
 }
 
 /** What may be written under public/ or logged for a private case: no reply text, no reasons. */
@@ -163,13 +176,15 @@ async function main() {
 
   const cases = loadCases(dirs);
   const byId = new Map(cases.map((c) => [c.id, c]));
-  const { results, costUsd, judgeSkipped } = await runCases(cases, {
+  const { results, costUsd, judgeCostUsd, judgeSkipped } = await runCases(cases, {
     agent,
     judge: values["no-judge"] ? undefined : realJudge,
     repeat,
     only,
-    onResult: (r, c) => {
-      console.log(`${r.pass ? "PASS" : "FAIL"} ${r.id}`);
+    onResult: (r, c, s) => {
+      const u = s.usage;
+      const tokens = u ? `in=${u.input} out=${u.output} cacheRead=${u.cacheRead} cacheWrite=${u.cacheWrite}` : "no usage";
+      console.log(`${r.pass ? "PASS" : "FAIL"} ${r.id}  ${tokens}  $${s.costUsd.toFixed(5)} judge $${s.judgeCostUsd.toFixed(5)}`);
       if (!r.pass && !c.isPrivate)
         for (const k of r.checks.filter((k) => !k.pass)) console.log(`  ${k.name}: ${k.reason ?? ""}`);
     },
@@ -178,7 +193,7 @@ async function main() {
   const g = gates(results);
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const incomplete = judgeSkipped || !!only;
-  const header = { model: values.model, startedAt: new Date().toISOString(), repeat, only: only ?? null, judgeSkipped, incomplete, costUsd, gates: g };
+  const header = { model: values.model, startedAt: new Date().toISOString(), repeat, only: only ?? null, judgeSkipped, incomplete, costUsd, judgeCostUsd, gates: g };
   const isPriv = (r: CaseResult) => byId.get(r.id)?.isPrivate;
 
   const pubDir = join(PUBLIC_ROOT, "evals/results");
@@ -194,7 +209,10 @@ async function main() {
   }
 
   const n = results.filter((r) => r.pass).length;
-  console.log(`\n${n}/${results.length} passed. cost $${costUsd.toFixed(4)}${judgeSkipped ? " (rubric checks skipped)" : ""}`);
+  console.log(
+    `\n${n}/${results.length} passed. cost: agent $${costUsd.toFixed(4)} + judge $${judgeCostUsd.toFixed(4)} = $${(costUsd + judgeCostUsd).toFixed(4)}` +
+      ` (agent $${(costUsd / Math.max(results.length, 1)).toFixed(5)} per case)${judgeSkipped ? " (rubric checks skipped)" : ""}`,
+  );
   const { line, exitCode } = gateSummary(g, incomplete);
   console.log(line);
   process.exit(exitCode);

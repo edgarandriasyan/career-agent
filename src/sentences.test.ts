@@ -27,3 +27,11 @@ test("flush resets", () => {
   expect(s.flush()).toEqual([]);
 });
 test("markdown emphasis closers stay with their sentence", () => expect(seg("**Bold.** Next one.")).toEqual(["**Bold.**", "Next one."]));
+
+test("pending is true only while non-blank text waits", () => {
+  const s = new SentenceSegmenter();
+  s.push("Done. ");
+  expect(s.pending).toBe(false);
+  s.push("Half");
+  expect(s.pending).toBe(true);
+});

@@ -6,7 +6,8 @@
     "test": "vitest run",
     "generate": "tsx scripts/generate-career.ts",
     "scan": "tsx scripts/scan.ts",
-    "evals": "tsx evals/run.ts"
+    "evals": "tsx evals/run.ts",
+    "smoke": "tsx evals/smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
