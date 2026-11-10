@@ -12,7 +12,9 @@
     "phoenix:setup": "tsx evals/phoenix/setup.ts",
     "phoenix:datasets": "tsx evals/phoenix/datasets.ts",
     "phoenix:experiment": "tsx evals/phoenix/experiment.ts",
-    "phoenix:evaluate": "tsx evals/phoenix/experiment.ts evaluate"
+    "phoenix:evaluate": "tsx evals/phoenix/experiment.ts evaluate",
+    "review": "tsx ../private/review/server.ts",
+    "review:export": "tsx ../private/review/export-labels.ts"
   },
   "devDependencies": {
     "@arizeai/phoenix-client": "7.18.2",
