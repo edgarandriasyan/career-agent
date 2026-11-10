@@ -5,12 +5,16 @@
   "scripts": {
     "test": "vitest run",
     "generate": "tsx scripts/generate-career.ts",
-    "scan": "tsx scripts/scan.ts"
+    "scan": "tsx scripts/scan.ts",
+    "evals": "tsx evals/run.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0"
   }
 }

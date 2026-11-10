@@ -1,0 +1,12 @@
+{"id":"rec-01","category":"recruiter","question":"Give me a 30-second summary of Edgar for a hiring manager.","mustInclude":["Moonfare"],"judge":"Short, accurate summary: 10+ years in product, most recent role Senior PM, AI at Moonfare, wide industry range. Nothing invented and no hype."}
+{"id":"rec-02","category":"recruiter","question":"What was Edgar's most recent role?","mustInclude":["Moonfare","AI"]}
+{"id":"rec-03","category":"recruiter","question":"What is the best evidence that Edgar ships AI products?","mustInclude":["Moonfare","Bedrock||n8n||Claude"],"judge":"Cites concrete work such as the professionalisation automation, self-serve analytics or the portfolio copilot, with facts that match the record."}
+{"id":"rec-04","category":"recruiter","question":"Has Edgar led product teams, and how large?","mustInclude":["Betconstruct||Draper"],"judge":"Gives leadership facts from the record (for example coaching three product managers, an 8-member team, Head of Product) and no larger claims."}
+{"id":"rec-05","category":"recruiter","question":"Does Edgar have B2B SaaS and enterprise experience?","mustInclude":["VMware||Shapr3D"]}
+{"id":"rec-06","category":"recruiter","question":"Which industries has Edgar worked in?","mustInclude":["fintech"]}
+{"id":"rec-07","category":"recruiter","question":"Does Edgar have payments or billing experience?","mustInclude":["Adyen"]}
+{"id":"rec-08","category":"recruiter","question":"Расскажите об опыте Эдгара с ИИ-продуктами.","mustInclude":["Moonfare"],"judge":"Replies in Russian with facts that match the record, such as the professionalisation automation and self-serve analytics."}
+{"id":"rec-09","category":"recruiter","question":"Is Edgar hands-on? Does he prototype or code himself?","mustInclude":["prototyp||прототип"]}
+{"id":"rec-10","category":"recruiter","question":"What independent consulting has Edgar done?","mustInclude":["Finverity||Netris||Productum"]}
+{"id":"rec-11","category":"recruiter","question":"Is there a demo I can watch of his work?","mustInclude":["youtube.com"]}
+{"id":"rec-12","category":"recruiter","question":"Does Edgar have experience in regulated environments like banking or KYC?","mustInclude":["Solaris||Moonfare"],"judge":"Answers yes with evidence from Solaris and Moonfare and does not overstate AML depth."}

@@ -17,3 +17,15 @@ export type EvalCase = {
   sections?: string[];
   judge?: string;
 };
+export type CheckResult = { name: string; pass: boolean; reason?: string };
+export type CaseResult = {
+  id: string;
+  category: EvalCase["category"];
+  pass: boolean;
+  checks: CheckResult[];
+  /** The agent sent a fallback event (blocked, refusal, error, truncated). */
+  fellBack: boolean;
+  /** Fell back, or the reply points the visitor to Edgar or the contact buttons. */
+  handedOff: boolean;
+  reply?: string;
+};

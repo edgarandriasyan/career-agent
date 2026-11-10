@@ -1,0 +1,16 @@
+{"id":"facts-01","category":"facts","question":"How much incremental AUM did the semi-liquid top-ups feature bring Moonfare?","mustInclude":["$1.1M||1.1M||1,1 млн||1.1 million||1.1 mln"],"sections":["Moonfare: semi-liquid fund top-ups"]}
+{"id":"facts-02","category":"facts","question":"What does the professionalisation automation save per year?","mustInclude":["$250K||250K||250 тыс||250,000||250 thousand"],"sections":["Moonfare: AI professionalisation automation"]}
+{"id":"facts-03","category":"facts","question":"Who was in the audience when Edgar demoed the professionalisation automation?","mustInclude":["CEO||генеральн||гендир"],"sections":["Moonfare: AI professionalisation automation"]}
+{"id":"facts-04","category":"facts","question":"Who built Moonfare's self-serve analytics?","mustInclude":["engineer||инженер"],"judge":"Says Edgar built it together with an engineer, not alone and not with a whole team.","sections":["Moonfare: self-serve analytics"]}
+{"id":"facts-06","category":"facts","question":"What results did Edgar get at Shapr3D?","mustInclude":["8%","17%"],"sections":["Shapr3D: Lead Product Manager"]}
+{"id":"facts-07","category":"facts","question":"What was the Solaris engagement and when did it end?","mustInclude":["Nov||ноябр"],"sections":["Solaris SE: Senior Product Manager"]}
+{"id":"facts-09","category":"facts","question":"На сколько Эдгар сократил время настройки продукта в VMware?","mustInclude":["25%||25 %"],"sections":["VMware: Senior Technical Product Manager"]}
+{"id":"facts-10","category":"facts","question":"How big was Edgar's scope at Betconstruct?","mustInclude":["400"],"judge":"States an 8-member team and 400+ B2B operators, and nothing larger.","sections":["Betconstruct: Senior PM and Group PM"]}
+{"id":"facts-11","category":"facts","question":"What was Edgar's title at Draper Decentralized?","mustInclude":["Head of Product||руководител"],"sections":["Draper Decentralized: Head of Product"]}
+{"id":"facts-12","category":"facts","question":"How many years of product experience does Edgar have?","mustInclude":["10+||10 лет||10 years||over 10||more than 10||ten years"],"sections":["Summary"]}
+{"id":"facts-13","category":"facts","question":"Where is Edgar based, and would he relocate?","mustInclude":["Yerevan||Ереван","relocat||релокац||переезд"],"sections":["Location and work setup"]}
+{"id":"facts-14","category":"facts","question":"What has Edgar been doing since Moonfare?","mustInclude":["personal project||личн"],"sections":["After Moonfare"]}
+{"id":"facts-15","category":"facts","question":"How can I contact Edgar?","mustInclude":["edgar.andriasyan@gmail.com"],"mustNotInclude":["wa.me","tel:"],"expectHandoff":true,"sections":["Contact"]}
+{"id":"facts-16","category":"facts","question":"What role did Edgar hold at Krisp and when?","mustInclude":["Senior Product Manager","2019"],"sections":["Krisp: Senior Product Manager"]}
+{"id":"facts-18","category":"facts","question":"Does Edgar hold an AWS certification?","mustInclude":["expire||истек||истёк||не действует"],"judge":"Says the AWS Solutions Architect Associate certification exists but has expired.","sections":["Education and certifications"]}
+{"id":"facts-20","category":"facts","question":"What kind of engagement does Edgar prefer?","mustInclude":["B2B"],"sections":["Work authorization"]}
