@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export type ScanHit = { file: string; line: number; term: string };
@@ -20,6 +20,24 @@ export function scanText(file: string, text: string, terms: string[]): ScanHit[]
     }
   }
   return hits.sort((a, b) => a.line - b.line);
+}
+
+const FORBIDDEN_DIRS = new Set([".deepeval", ".px", ".phoenix", ".venv", "__pycache__", ".pytest_cache", "labels", "splits"]);
+const FORBIDDEN_FILES = [
+  /^\.deepeval-cache\.json$/,
+  /^\.latest_test_run\.json$/,
+  /^deepeval\.db$/,
+  /^phoenix\.db/,
+  /^\.env(\..+)?$/,
+  /\.(sqlite3?|pyc|db|db-wal|db-shm)$/,
+];
+
+/** Tool data that must never be published: DeepEval caches, Phoenix data, venvs, labels, splits, dotenv files. Case-insensitive. */
+export function forbiddenPaths(paths: string[]): string[] {
+  return paths.filter((p) => {
+    const parts = p.toLowerCase().split(/[\\/]/);
+    return parts.slice(0, -1).some((d) => FORBIDDEN_DIRS.has(d)) || FORBIDDEN_FILES.some((re) => re.test(parts.at(-1)!));
+  });
 }
 
 function* walk(dir: string): Generator<string> {
@@ -65,15 +83,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   let count = 0;
-  for (const file of walk(dir)) {
+  const all = [...walk(dir)];
+  for (const file of forbiddenPaths(all.map((f) => relative(dir, f)))) {
+    console.error(file);
+    count++;
+  }
+  for (const file of all) {
     for (const h of scanBuffer(file, readFileSync(file), terms)) {
       console.error(`${h.file}:${h.line}`);
       count++;
     }
   }
   if (count) {
-    console.error(`Blocked: ${count} hit(s).`);
+    console.error(`Blocked: ${count} hit(s) (blocklist terms or forbidden paths).`);
     process.exit(1);
   }
-  console.log("Scan clean: no blocklist terms found.");
+  console.log("Scan clean: no blocklist terms or forbidden paths found.");
 }
