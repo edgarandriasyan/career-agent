@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { costUsd } from "../src/spend";
-import { buildJudgeRequest, judgePromptHash, parseJudgeResponse, type JudgeRequest, type JudgeResponse } from "./judges/request";
+import { buildJudgeRequest, judgePromptHash, parseJudgeResponse, type ClaudeRequest, type JudgeRequest, type JudgeResponse } from "./judges/request";
 import type { JudgeInput, JudgeModel, JudgeSpec, JudgeVerdict } from "./judges/spec";
 
 /*
@@ -10,12 +10,12 @@ import type { JudgeInput, JudgeModel, JudgeSpec, JudgeVerdict } from "./judges/s
  * reads or prints it. Tests inject a fake client.
  */
 
-/** The slice of the SDK that runJudge uses, so tests can pass a fake. */
-export type JudgeClient = { messages: { create(params: JudgeRequest): Promise<JudgeResponse> } };
+/** The slice of the SDK that runJudge (and the DeepEval ClaudeJudge, with ClaudeRequest) uses, so tests can pass a fake. */
+export type JudgeClient<R extends ClaudeRequest = JudgeRequest> = { messages: { create(params: R): Promise<JudgeResponse> } };
 
-let realClient: JudgeClient | undefined;
-/** The real SDK client, created on first use. No cast: tsc checks JudgeRequest and JudgeResponse against the SDK. */
-export const defaultJudgeClient = (): JudgeClient => {
+let realClient: JudgeClient<ClaudeRequest> | undefined;
+/** The real SDK client, created on first use. No cast: tsc checks ClaudeRequest and JudgeResponse against the SDK. */
+export const defaultJudgeClient = (): JudgeClient<ClaudeRequest> => {
   if (!realClient) {
     const c = new Anthropic();
     realClient = { messages: { create: (p) => c.messages.create(p) } };

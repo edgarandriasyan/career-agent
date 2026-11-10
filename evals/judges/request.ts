@@ -35,6 +35,14 @@ export type JudgeRequest = {
   system: SystemBlock[];
   messages: { role: "user"; content: string }[];
 };
+/** Any judge-style request (the DeepEval ClaudeJudge sends no system and an optional, arbitrary schema). */
+export type ClaudeRequest = {
+  model: JudgeModel;
+  max_tokens: number;
+  output_config: { effort: typeof EFFORT; format?: { type: "json_schema"; schema: Record<string, unknown> } };
+  system?: SystemBlock[];
+  messages: { role: "user"; content: string }[];
+};
 /** The response fields the parser reads, a subset of the SDK's Message. */
 export type JudgeResponse = {
   stop_reason: string | null;
@@ -47,7 +55,7 @@ export type JudgeResponse = {
   };
 };
 
-const EMPTY_REPLY = "(no reply; the visitor saw the static contact message)";
+export const EMPTY_REPLY = "(no reply; the visitor saw the static contact message)";
 
 const tag = (name: string, body: string) => `<${name}>\n${body}\n</${name}>`;
 

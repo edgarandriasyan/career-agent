@@ -7,13 +7,16 @@
     "generate": "tsx scripts/generate-career.ts",
     "scan": "tsx scripts/scan.ts",
     "evals": "tsx evals/run.ts",
-    "smoke": "tsx evals/smoke.ts"
+    "smoke": "tsx evals/smoke.ts",
+    "postinstall": "node -e \"require('node:fs').rmSync('node_modules/deepeval/dist/telemetry.js',{force:true})\""
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "deepeval": "0.9.25",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "zod": "4.6.7"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0"
