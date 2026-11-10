@@ -63,7 +63,7 @@ export function metricsFor(c: LoadedCase, judge: ClaudeJudge): M.BaseMetric[] {
   return out;
 }
 
-const scoreName = (m: M.BaseMetric) => (m.name.startsWith("deepeval/") ? m.name : `deepeval/${m.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`);
+export const scoreName = (m: M.BaseMetric) => (m.name.startsWith("deepeval/") ? m.name : `deepeval/${m.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`);
 const errorKind = (e: unknown) =>
   e instanceof JudgeRefusalError ? "refusal" : e instanceof JudgeTruncatedError ? "max_tokens" : `${(e as Error)?.name ?? "Error"}: ${(e as Error)?.message ?? String(e)}`;
 
