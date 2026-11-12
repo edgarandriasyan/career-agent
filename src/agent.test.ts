@@ -249,3 +249,18 @@ test("system override replaces SYSTEM_PROMPT; default unchanged", async () => {
   for await (const _ of answer(i, { client: b.client }));
   expect(b.log.params.system).toBe(SYSTEM_PROMPT);
 });
+
+test("SYSTEM_PROMPT carries the seniority, off-topic, case-study and confidentiality rules", () => {
+  expect(SYSTEM_PROMPT).toMatch(/senior and above roles/);
+  expect(SYSTEM_PROMPT).toMatch(/mid-level or junior role, politely discourage/);
+  expect(SYSTEM_PROMPT).toMatch(/only if the visitor still wants to reach him/);
+  expect(SYSTEM_PROMPT).toMatch(/Answer only questions about Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/not a general assistant/);
+  expect(SYSTEM_PROMPT).toMatch(/trivia/);
+  expect(SYSTEM_PROMPT).toMatch(/cover letters/);
+  expect(SYSTEM_PROMPT).toMatch(/chit-chat/);
+  expect(SYSTEM_PROMPT).toMatch(/For case studies and projects, use only what the document states/);
+  expect(SYSTEM_PROMPT).toMatch(/team sizes/);
+  expect(SYSTEM_PROMPT).toMatch(/Never share personal data about Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/confidential company information/);
+});
