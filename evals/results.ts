@@ -136,6 +136,22 @@ export function buildHeader(o: {
 const usd = (x: number) => +x.toFixed(6);
 const roundCost = (e: AgentEvent): AgentEvent => (e.type === "done" ? { ...e, costUsd: usd(e.costUsd) } : e);
 
+/**
+ * The view every scorer must take of a run: the last turn's question, and the history before it (the seed
+ * history, then each earlier turn's question and visible reply), exactly what run.ts gives the gate judge.
+ * A run's `question` is the first question and its `reply` the last turn's, so pairing those is wrong for a
+ * multi-turn case. Mirrored in private/evals/py/runs.py (load_runs). `rawText` joins every turn's raw text,
+ * so raw-text scores are not last-turn views for multi-turn cases.
+ */
+export function lastTurnView(r: { question: string; history: Msg[]; turns?: Turn[] }): { question: string; history: Msg[] } {
+  const turns = r.turns ?? [];
+  if (!turns.length) return { question: r.question, history: r.history };
+  return {
+    question: turns.at(-1)!.question,
+    history: [...r.history, ...turns.slice(0, -1).flatMap((t): Msg[] => [{ role: "user", text: t.question }, { role: "assistant", text: t.reply }])],
+  };
+}
+
 export function toStored(run: CaseRun): StoredRun {
   const r = run.result;
   const turns = r.turns ?? [];

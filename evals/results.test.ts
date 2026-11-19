@@ -7,7 +7,7 @@ import type { AgentEvent } from "../src/types";
 import { BUDGETS } from "./budgets";
 import { runCase, type AgentFn, type GateJudge, type LoadedCase } from "./run";
 import type { JudgeHeader } from "./results";
-import { buildHeader, caseSetVersion, sha12, writeResults, type ResultsFile } from "./results";
+import { buildHeader, caseSetVersion, lastTurnView, sha12, writeResults, type ResultsFile } from "./results";
 
 const mk = (o: Partial<LoadedCase> & { id: string }): LoadedCase => ({ category: "facts", question: "q", isPrivate: false, ...o });
 const blockedAgent: AgentFn = async function* (_c, o) {
@@ -85,7 +85,26 @@ test("header lists every judge used with model and prompt hash", () => {
   expect(headerFor([mk({ id: "a" })]).judges).toEqual([]);
 });
 
-test("standing budgets", () => {
+test("standing budgets, and costs.json records them as the current caps", () => {
   expect(BUDGETS.pr).toEqual({ "claude-haiku-5-5": 0.5, "claude-sonnet-5-5": 1.5 });
   expect(BUDGETS.full).toEqual({ "claude-haiku-5-5": 3, "claude-sonnet-5-5": 6 });
+  expect(JSON.parse(readFileSync(new URL("./costs.json", import.meta.url), "utf8")).budgets.current).toEqual(BUDGETS);
+});
+
+test("costs.json totals are the sums of its phase rows", () => {
+  const { budgets } = JSON.parse(readFileSync(new URL("./costs.json", import.meta.url), "utf8"));
+  for (const k of ["lean", "recommended", "ceiling"])
+    for (const i of [0, 1])
+      expect(budgets.totals[k][i]).toBeCloseTo(budgets.phases.reduce((s: number, p: Record<string, { range: number[] }>) => s + p[k].range[i], 0), 6);
+});
+
+test("lastTurnView gives the last turn's question and the history before it", () => {
+  const seed = [{ role: "user" as const, text: "hi" }, { role: "assistant" as const, text: "hello" }];
+  const turns = [{ question: "Q1?", reply: "R1.", events: [] }, { question: "Q2?", reply: "R2.", events: [] }];
+  expect(lastTurnView({ question: "Q1?", history: seed, turns })).toEqual({
+    question: "Q2?",
+    history: [...seed, { role: "user", text: "Q1?" }, { role: "assistant", text: "R1." }],
+  });
+  expect(lastTurnView({ question: "Q1?", history: seed, turns: turns.slice(0, 1) })).toEqual({ question: "Q1?", history: seed });
+  expect(lastTurnView({ question: "Q?", history: [] })).toEqual({ question: "Q?", history: [] });
 });

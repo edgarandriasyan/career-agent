@@ -32,6 +32,14 @@ function run(o: { reply?: string; rawText?: string; sources?: string[]; rep?: nu
 const ANY = JSON.stringify({ steps: ["Check the reply."], score: 1, reason: "ok", verdict: false });
 const judgeWith = (replies: Parameters<typeof fakeClient>[0]) => new ClaudeJudge({ model: "claude-sonnet-5-5", client: fakeClient(replies) });
 
+test("toTestCase pairs a multi-turn reply with the last turn's question", () => {
+  const r = run({ reply: "R2." });
+  r.result.turns = [{ question: "Q1?", reply: "R1.", events: [] }, { question: "Q2?", reply: "R2.", events: r.result.events }];
+  const tc = toTestCase(r, kase(), CAREER, "visible");
+  expect(tc.input).toBe("Q2?");
+  expect(tc.actualOutput).toBe("R2.");
+});
+
 test("toTestCase raw uses rawText; visible uses the reply", () => {
   const visible = toTestCase(run({ reply: "Shown.", rawText: "Raw." }), kase(), CAREER, "visible");
   const raw = toTestCase(run({ reply: "Shown.", rawText: "Raw." }), kase(), CAREER, "raw");

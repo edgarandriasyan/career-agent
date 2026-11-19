@@ -1,0 +1,693 @@
+{
+  "date": "2026-11-19",
+  "components": [
+    {
+      "name": "bot (answer)",
+      "model": "claude-haiku-5-5",
+      "calls": 7,
+      "costPerCall": 0.000378,
+      "costPerCase": 0.000529,
+      "cacheReadShare": 0.995,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "bot (answer)",
+      "model": "claude-sonnet-5-5",
+      "calls": 7,
+      "costPerCall": 0.004789,
+      "costPerCase": 0.006704,
+      "cacheReadShare": 0.995,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "J0 judge",
+      "model": "claude-sonnet-5-5",
+      "calls": 5,
+      "costPerCall": 0.004737,
+      "costPerCase": 0.004737,
+      "cacheReadShare": 0.977,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "J0 judge",
+      "model": "claude-opus-5-5",
+      "calls": 5,
+      "costPerCall": 0.020146,
+      "costPerCase": 0.020146,
+      "cacheReadShare": 0.781,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval TS (scoreDeepEval)",
+      "model": "claude-haiku-5-5",
+      "calls": 28,
+      "costPerCall": 0.000319,
+      "costPerCase": 0.001788,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval TS (scoreDeepEval)",
+      "model": "claude-sonnet-5-5",
+      "calls": 28,
+      "costPerCall": 0.00525,
+      "costPerCase": 0.029399,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py classifier",
+      "model": "claude-haiku-5-5",
+      "calls": 5,
+      "costPerCall": 0.000149,
+      "costPerCase": 0.000149,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py classifier",
+      "model": "claude-sonnet-5-5",
+      "calls": 5,
+      "costPerCall": 0.0027,
+      "costPerCase": 0.0027,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "phoenix-evals Faithfulness",
+      "model": "claude-haiku-5-5",
+      "calls": 5,
+      "costPerCall": 0.001182,
+      "costPerCase": 0.001182,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "phoenix-evals Faithfulness",
+      "model": "claude-sonnet-5-5",
+      "calls": 5,
+      "costPerCall": 0.023504,
+      "costPerCase": 0.023504,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "phoenix-evals Refusal",
+      "model": "claude-haiku-5-5",
+      "calls": 4,
+      "costPerCall": 0.000157,
+      "costPerCase": 0.000157,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "phoenix-evals Refusal",
+      "model": "claude-sonnet-5-5",
+      "calls": 4,
+      "costPerCall": 0.002994,
+      "costPerCase": 0.002994,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py Synthesizer (2 goldens)",
+      "model": "claude-haiku-5-5",
+      "calls": 33,
+      "costPerCall": 0.000258,
+      "costPerCase": 0.008498,
+      "cacheReadShare": 0,
+      "errors": 1,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py Synthesizer (2 goldens)",
+      "model": "claude-sonnet-5-5",
+      "calls": 18,
+      "costPerCall": 0.004676,
+      "costPerCase": 0.08417,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py ConversationSimulator (1 conversation)",
+      "model": "claude-haiku-5-5",
+      "calls": 4,
+      "costPerCall": 0.000219,
+      "costPerCase": 0.000876,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "DeepEval Py ConversationSimulator (1 conversation)",
+      "model": "claude-sonnet-5-5",
+      "calls": 4,
+      "costPerCall": 0.003805,
+      "costPerCase": 0.015222,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "bot (simulated turn)",
+      "model": "claude-haiku-5-5",
+      "calls": 2,
+      "costPerCall": 0.001542,
+      "costPerCase": 0.003083,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    },
+    {
+      "name": "bot (simulated turn)",
+      "model": "claude-sonnet-5-5",
+      "calls": 2,
+      "costPerCall": 0.027746,
+      "costPerCase": 0.055492,
+      "cacheReadShare": 0,
+      "errors": 0,
+      "refusals": 0,
+      "schemaRetries": 0
+    }
+  ],
+  "budgets": {
+    "status": "Proposed, awaiting Edgar's approval",
+    "phases": [
+      {
+        "phase": "C",
+        "item": "Bot, run A, dev split, both models (about 200 calls each)",
+        "lean": {
+          "range": [
+            1.03,
+            1.55
+          ],
+          "basis": "200 x bot (answer) haiku per call ($0.00038) + 200 x bot (answer) sonnet per call ($0.00479) = $1.03"
+        },
+        "recommended": {
+          "range": [
+            1.03,
+            1.55
+          ],
+          "basis": "200 x bot (answer) haiku per call ($0.00038) + 200 x bot (answer) sonnet per call ($0.00479) = $1.03"
+        },
+        "ceiling": {
+          "range": [
+            1.03,
+            1.55
+          ],
+          "basis": "200 x bot (answer) haiku per call ($0.00038) + 200 x bot (answer) sonnet per call ($0.00479) = $1.03"
+        }
+      },
+      {
+        "phase": "C",
+        "item": "J0 advisory judge (Sonnet) on rubric cases, both runs (about 260 verdicts)",
+        "lean": {
+          "range": [
+            1.23,
+            1.85
+          ],
+          "basis": "260 x J0 judge sonnet per call ($0.00474) = $1.23"
+        },
+        "recommended": {
+          "range": [
+            1.23,
+            1.85
+          ],
+          "basis": "260 x J0 judge sonnet per call ($0.00474) = $1.23"
+        },
+        "ceiling": {
+          "range": [
+            1.23,
+            1.85
+          ],
+          "basis": "260 x J0 judge sonnet per call ($0.00474) = $1.23"
+        }
+      },
+      {
+        "phase": "C",
+        "item": "Re-runs after specification fixes, 2 x dev split incl. J0 (Haiku bot; ceiling Sonnet bot)",
+        "lean": {
+          "range": [
+            1.38,
+            2.07
+          ],
+          "basis": "400 x bot (answer) haiku per call ($0.00038) + 260 x J0 judge sonnet per call ($0.00474) = $1.38"
+        },
+        "recommended": {
+          "range": [
+            1.38,
+            2.07
+          ],
+          "basis": "400 x bot (answer) haiku per call ($0.00038) + 260 x J0 judge sonnet per call ($0.00474) = $1.38"
+        },
+        "ceiling": {
+          "range": [
+            3.15,
+            4.72
+          ],
+          "basis": "400 x bot (answer) sonnet per call ($0.00479) + 260 x J0 judge sonnet per call ($0.00474) = $3.15"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "Ablation runs, 3 sections x about 100 cases, no judge (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            0.11,
+            0.17
+          ],
+          "basis": "300 x bot (answer) haiku per call ($0.00038) = $0.11"
+        },
+        "recommended": {
+          "range": [
+            0.11,
+            0.17
+          ],
+          "basis": "300 x bot (answer) haiku per call ($0.00038) = $0.11"
+        },
+        "ceiling": {
+          "range": [
+            1.44,
+            2.16
+          ],
+          "basis": "300 x bot (answer) sonnet per call ($0.00479) = $1.44"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "Judge development, 4 to 5 judges, about 1,100 calls (lean Sonnet; recommended and ceiling Opus)",
+        "lean": {
+          "range": [
+            5.21,
+            7.82
+          ],
+          "basis": "1100 x J0 judge sonnet per call ($0.00474) = $5.21"
+        },
+        "recommended": {
+          "range": [
+            22.16,
+            33.24
+          ],
+          "basis": "1100 x J0 judge opus per call ($0.02015) = $22.16"
+        },
+        "ceiling": {
+          "range": [
+            22.16,
+            33.24
+          ],
+          "basis": "1100 x J0 judge opus per call ($0.02015) = $22.16"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "Cheaper-model measurement on frozen test splits (Haiku and Sonnet judges, about 200 each)",
+        "lean": {
+          "range": [
+            0.99,
+            1.49
+          ],
+          "basis": "200 x J0 judge sonnet per call x 0.05 ($0.00024) + 200 x J0 judge sonnet per call ($0.00474) = $0.99"
+        },
+        "recommended": {
+          "range": [
+            0.99,
+            1.49
+          ],
+          "basis": "200 x J0 judge sonnet per call x 0.05 ($0.00024) + 200 x J0 judge sonnet per call ($0.00474) = $0.99"
+        },
+        "ceiling": {
+          "range": [
+            0.99,
+            1.49
+          ],
+          "basis": "200 x J0 judge sonnet per call x 0.05 ($0.00024) + 200 x J0 judge sonnet per call ($0.00474) = $0.99"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "DeepEval TS baselines on test splits, about 200 case-metrics (about 510 calls; lean Haiku, else Sonnet)",
+        "lean": {
+          "range": [
+            0.16,
+            0.24
+          ],
+          "basis": "510 x DeepEval TS (scoreDeepEval) haiku per call ($0.00032) = $0.16"
+        },
+        "recommended": {
+          "range": [
+            2.68,
+            4.02
+          ],
+          "basis": "510 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $2.68"
+        },
+        "ceiling": {
+          "range": [
+            2.68,
+            4.02
+          ],
+          "basis": "510 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $2.68"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "DeepEval Python classifiers on test splits, about 250 calls (lean Haiku, else Sonnet)",
+        "lean": {
+          "range": [
+            0.04,
+            0.06
+          ],
+          "basis": "250 x DeepEval Py classifier haiku per call ($0.00015) = $0.04"
+        },
+        "recommended": {
+          "range": [
+            0.68,
+            1.01
+          ],
+          "basis": "250 x DeepEval Py classifier sonnet per call ($0.00270) = $0.68"
+        },
+        "ceiling": {
+          "range": [
+            0.68,
+            1.01
+          ],
+          "basis": "250 x DeepEval Py classifier sonnet per call ($0.00270) = $0.68"
+        }
+      },
+      {
+        "phase": "D",
+        "item": "phoenix-evals Faithfulness and Refusal, about 40 calls each (lean Haiku, else Sonnet)",
+        "lean": {
+          "range": [
+            0.05,
+            0.08
+          ],
+          "basis": "40 x phoenix-evals Faithfulness haiku per call ($0.00118) + 40 x phoenix-evals Refusal haiku per call ($0.00016) = $0.05"
+        },
+        "recommended": {
+          "range": [
+            1.06,
+            1.59
+          ],
+          "basis": "40 x phoenix-evals Faithfulness sonnet per call ($0.02350) + 40 x phoenix-evals Refusal sonnet per call ($0.00299) = $1.06"
+        },
+        "ceiling": {
+          "range": [
+            1.06,
+            1.59
+          ],
+          "basis": "40 x phoenix-evals Faithfulness sonnet per call ($0.02350) + 40 x phoenix-evals Refusal sonnet per call ($0.00299) = $1.06"
+        }
+      },
+      {
+        "phase": "E",
+        "item": "DeepEval Synthesizer, about 100 goldens (lean Haiku, else Sonnet)",
+        "lean": {
+          "range": [
+            0.42,
+            0.64
+          ],
+          "basis": "100 x DeepEval Py Synthesizer (2 goldens) haiku per case x 0.5 ($0.00425) = $0.42"
+        },
+        "recommended": {
+          "range": [
+            4.21,
+            6.31
+          ],
+          "basis": "100 x DeepEval Py Synthesizer (2 goldens) sonnet per case x 0.5 ($0.04208) = $4.21"
+        },
+        "ceiling": {
+          "range": [
+            4.21,
+            6.31
+          ],
+          "basis": "100 x DeepEval Py Synthesizer (2 goldens) sonnet per case x 0.5 ($0.04208) = $4.21"
+        }
+      },
+      {
+        "phase": "E",
+        "item": "ConversationSimulator, 30 conversations of 6 user turns: 2 simulator calls per turn, the bot's turns and about 13 conversational-metric calls each (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            0.27,
+            0.41
+          ],
+          "basis": "360 x DeepEval Py ConversationSimulator (1 conversation) haiku per call ($0.00022) + 180 x bot (answer) haiku per call ($0.00038) + 390 x DeepEval TS (scoreDeepEval) haiku per call ($0.00032) = $0.27"
+        },
+        "recommended": {
+          "range": [
+            0.27,
+            0.41
+          ],
+          "basis": "360 x DeepEval Py ConversationSimulator (1 conversation) haiku per call ($0.00022) + 180 x bot (answer) haiku per call ($0.00038) + 390 x DeepEval TS (scoreDeepEval) haiku per call ($0.00032) = $0.27"
+        },
+        "ceiling": {
+          "range": [
+            4.28,
+            6.42
+          ],
+          "basis": "360 x DeepEval Py ConversationSimulator (1 conversation) sonnet per call ($0.00380) + 180 x bot (answer) sonnet per call ($0.00479) + 390 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $4.28"
+        }
+      },
+      {
+        "phase": "F",
+        "item": "Launch gate run: both models once on the full set (about 260 calls) plus 3 repeats on the chosen model (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            1.64,
+            2.46
+          ],
+          "basis": "1040 x bot (answer) haiku per call ($0.00038) + 260 x bot (answer) sonnet per call ($0.00479) = $1.64"
+        },
+        "recommended": {
+          "range": [
+            1.64,
+            2.46
+          ],
+          "basis": "1040 x bot (answer) haiku per call ($0.00038) + 260 x bot (answer) sonnet per call ($0.00479) = $1.64"
+        },
+        "ceiling": {
+          "range": [
+            5.08,
+            7.62
+          ],
+          "basis": "260 x bot (answer) haiku per call ($0.00038) + 1040 x bot (answer) sonnet per call ($0.00479) = $5.08"
+        }
+      },
+      {
+        "phase": "F",
+        "item": "Validated judges inside the gate run, about 1,000 verdicts (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            0.24,
+            0.36
+          ],
+          "basis": "1000 x J0 judge sonnet per call x 0.05 ($0.00024) = $0.24"
+        },
+        "recommended": {
+          "range": [
+            0.24,
+            0.36
+          ],
+          "basis": "1000 x J0 judge sonnet per call x 0.05 ($0.00024) = $0.24"
+        },
+        "ceiling": {
+          "range": [
+            4.74,
+            7.11
+          ],
+          "basis": "1000 x J0 judge sonnet per call ($0.00474) = $4.74"
+        }
+      },
+      {
+        "phase": "G",
+        "item": "RAG bot calls, 3 arms x about 160 cases x 3 repeats (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            0.54,
+            0.82
+          ],
+          "basis": "1440 x bot (answer) haiku per call ($0.00038) = $0.54"
+        },
+        "recommended": {
+          "range": [
+            0.54,
+            0.82
+          ],
+          "basis": "1440 x bot (answer) haiku per call ($0.00038) = $0.54"
+        },
+        "ceiling": {
+          "range": [
+            6.9,
+            10.34
+          ],
+          "basis": "1440 x bot (answer) sonnet per call ($0.00479) = $6.90"
+        }
+      },
+      {
+        "phase": "G",
+        "item": "J1 on RAG arms, about 1,440 verdicts (Haiku; ceiling Sonnet)",
+        "lean": {
+          "range": [
+            0.34,
+            0.51
+          ],
+          "basis": "1440 x J0 judge sonnet per call x 0.05 ($0.00024) = $0.34"
+        },
+        "recommended": {
+          "range": [
+            0.34,
+            0.51
+          ],
+          "basis": "1440 x J0 judge sonnet per call x 0.05 ($0.00024) = $0.34"
+        },
+        "ceiling": {
+          "range": [
+            6.82,
+            10.23
+          ],
+          "basis": "1440 x J0 judge sonnet per call ($0.00474) = $6.82"
+        }
+      },
+      {
+        "phase": "G",
+        "item": "DeepEval contextual metrics, about 10 calls per case: Haiku on both retrieval arms (320 cases), Sonnet check on 40 cases (ceiling Sonnet on both arms)",
+        "lean": {
+          "range": [
+            3.12,
+            4.68
+          ],
+          "basis": "3200 x DeepEval TS (scoreDeepEval) haiku per call ($0.00032) + 400 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $3.12"
+        },
+        "recommended": {
+          "range": [
+            3.12,
+            4.68
+          ],
+          "basis": "3200 x DeepEval TS (scoreDeepEval) haiku per call ($0.00032) + 400 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $3.12"
+        },
+        "ceiling": {
+          "range": [
+            18.9,
+            28.35
+          ],
+          "basis": "3600 x DeepEval TS (scoreDeepEval) sonnet per call ($0.00525) = $18.90"
+        }
+      },
+      {
+        "phase": "E21",
+        "item": "J1 re-validation on about 100 labeled production traces (lean Haiku, else Sonnet)",
+        "lean": {
+          "range": [
+            0.02,
+            0.04
+          ],
+          "basis": "100 x J0 judge sonnet per call x 0.05 ($0.00024) = $0.02"
+        },
+        "recommended": {
+          "range": [
+            0.47,
+            0.71
+          ],
+          "basis": "100 x J0 judge sonnet per call ($0.00474) = $0.47"
+        },
+        "ceiling": {
+          "range": [
+            0.47,
+            0.71
+          ],
+          "basis": "100 x J0 judge sonnet per call ($0.00474) = $0.47"
+        }
+      }
+    ],
+    "totals": {
+      "lean": [
+        16.79,
+        25.25
+      ],
+      "recommended": [
+        42.15,
+        63.25
+      ],
+      "ceiling": [
+        85.82,
+        128.72
+      ]
+    },
+    "current": {
+      "pr": {
+        "claude-haiku-5-5": 0.5,
+        "claude-sonnet-5-5": 1.5
+      },
+      "full": {
+        "claude-haiku-5-5": 3,
+        "claude-sonnet-5-5": 6
+      }
+    },
+    "proposedCaps": {
+      "pr": {
+        "claude-haiku-5-5": {
+          "estimate": 0.42,
+          "cap": 0.75,
+          "basis": "110 x bot (answer) haiku per call ($0.00038) + 80 x J0 judge sonnet per call ($0.00474) = $0.42"
+        },
+        "claude-sonnet-5-5": {
+          "estimate": 0.91,
+          "cap": 1.5,
+          "basis": "110 x bot (answer) sonnet per call ($0.00479) + 80 x J0 judge sonnet per call ($0.00474) = $0.91"
+        }
+      },
+      "full": {
+        "claude-haiku-5-5": {
+          "estimate": 2.69,
+          "cap": 4.25,
+          "basis": "645 x bot (answer) haiku per call ($0.00038) + 516 x J0 judge sonnet per call ($0.00474) = $2.69"
+        },
+        "claude-sonnet-5-5": {
+          "estimate": 5.53,
+          "cap": 8.5,
+          "basis": "645 x bot (answer) sonnet per call ($0.00479) + 516 x J0 judge sonnet per call ($0.00474) = $5.53"
+        }
+      }
+    }
+  },
+  "notes": [
+    "Every phase row, total and proposed cap is computed by `evals/pilot.ts costs` from the per-row terms (volume x a measured component's average cost per call or per case); the per-row arithmetic is listed above. Volumes are planning figures from the eval-program plan.",
+    "Haiku judge costs are estimates: J0 was not run on Haiku, so a Haiku verdict is priced as the measured Sonnet J0 call x 0.05 (the price ratio). Judge development is priced the same way for Sonnet and Opus: the measured average J0 call, cold cache write included (Sonnet $0.00474, Opus $0.0201; warm Opus alone is about $0.0096, so the Opus row is an upper estimate if sessions stay warm).",
+    "Prompt caching works as designed: the bot read 99.5% of its input from cache, the J0 judge 97.7% on Sonnet and 78.1% on Opus (one cache write in five calls). The first call after five idle minutes writes the cache: about $0.002 on Haiku, $0.04 on Sonnet and $0.08 on Opus for the bot or judge prefix (about 16,200 tokens).",
+    "DeepEval (TS and Python) and phoenix-evals send no cache markers, so every corpus-carrying call pays full input price: Faithfulness against career.md costs about $0.02 to 0.035 per case on Sonnet, 20 times the Haiku figure.",
+    "Synthesizer per golden: Sonnet about $0.042. The Haiku run failed with an IndexError in DeepEval 4.3.3's synchronous generate_goldens_from_contexts (it does not cap the inputs a model returns to max_goldens_per_context, then indexes its progress bars past the end); its per-golden figure (about $0.004) comes from the calls made before the failure. The simulated conversation stopped after 2 user turns (expected outcome reached).",
+    "\"bot (simulated turn)\" has no token counts (bot-cli.ts returns only its cost), so its cache read share shows 0%; each conversation's first turn wrote the cache, which is why its per-call cost is above the bot's warm figure.",
+    "Pilot verdicts on the multi-turn case are invalid for the DeepEval Python classifier and phoenix-evals (Faithfulness, Refusal) and for DeepEval TS: the scorers paired the first question with the last turn's reply (a bug, since fixed with a shared last-turn view). Its costs are unaffected.",
+    "Phoenix's own cost for the two pilot experiments was within 11% of spend.ts (Haiku bot run with Sonnet J0: $0.0455 vs $0.0509; Sonnet: $0.0570 vs $0.0570). No reply was blocked in the pilot, so the blocked-reply under-count was not exercised."
+  ]
+}
