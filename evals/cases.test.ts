@@ -34,17 +34,21 @@ test("multiturn cases have 1 to 3 followUps and no scripted assistant turns", ()
 });
 
 test("holdout is 20% of each category within one case per sealing round (E9 is round 1), with no duplicate ids", () => {
-  const sealed = existsSync(HOLDOUT) ? (JSON.parse(readFileSync(HOLDOUT, "utf8")) as { seed: number; ids: string[] }) : undefined;
-  const [, holdout] = stratifiedSplit(cases, (c) => c.category, [0.8, 0.2], sealed?.seed ?? 1);
-  expect(new Set(cases.map((c) => c.id)).size).toBe(cases.length);
-  expect(new Set(holdout.map((c) => c.id)).size).toBe(holdout.length);
+  // The sealed file is the source of truth: ids never move back to dev. New cases join the holdout in a
+  // later sealing round (append their 20%, bump rounds), so each round may add one case of rounding per category.
+  const sealed = existsSync(HOLDOUT)
+    ? (JSON.parse(readFileSync(HOLDOUT, "utf8")) as { seed: number; rounds: number; ids: string[] })
+    : undefined;
+  const ids = sealed?.ids ?? stratifiedSplit(cases, (c) => c.category, [0.8, 0.2], 1)[1].map((c) => c.id);
+  const rounds = sealed?.rounds ?? 1;
+  const known = new Set(cases.map((c) => c.id));
+  expect(known.size).toBe(cases.length);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const id of ids) expect(known.has(id), `holdout id ${id} has no case`).toBe(true);
+  const held = new Set(ids);
   for (const cat of new Set(cases.map((c) => c.category))) {
-    const total = cases.filter((c) => c.category === cat).length;
-    expect(Math.abs(holdout.filter((c) => c.category === cat).length - 0.2 * total), cat).toBeLessThan(1);
-  }
-  if (sealed) {
-    expect(new Set(sealed.ids).size).toBe(sealed.ids.length);
-    expect([...sealed.ids].sort()).toEqual(holdout.map((c) => c.id).sort());
+    const inCat = cases.filter((c) => c.category === cat);
+    expect(Math.abs(inCat.filter((c) => held.has(c.id)).length - 0.2 * inCat.length), cat).toBeLessThan(rounds);
   }
 });
 
