@@ -3,7 +3,7 @@ import {
 } from "@arizeai/phoenix-otel";
 import type { CheckResult, EvalCase } from "../../src/types";
 import { checkFamily } from "../checks";
-import type { RunHeader } from "../results";
+import { lastTurnView, type RunHeader } from "../results";
 import type { CaseRun, LoadedCase } from "../run";
 
 /*
@@ -31,7 +31,7 @@ export function caseSpanAttributes(run: CaseRun, c: LoadedCase, h: RunHeader): S
     promptHash: h.promptHash, corpusHash: h.corpusHash, judges: h.judges.map((j) => j.id), isPrivate: c.isPrivate, gitSha: h.gitSha,
   };
   return {
-    [INPUT_VALUE]: JSON.stringify({ question: run.question, history: run.history }),
+    [INPUT_VALUE]: JSON.stringify(lastTurnView({ question: run.question, history: run.history, turns: r.turns })),
     [INPUT_MIME_TYPE]: "application/json",
     [OUTPUT_VALUE]: r.reply ?? "",
     [OUTPUT_MIME_TYPE]: "text/plain",

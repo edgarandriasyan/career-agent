@@ -50,6 +50,18 @@ test("case span attributes carry metadata, sentences and fallback, and no raw te
   expect(Object.keys(a).some((k) => /raw/i.test(k))).toBe(false);
 });
 
+test("a multi-turn case's input shows every user turn: the last question and the history before it", () => {
+  const turns = [
+    { question: "Is he a fit?", reply: "He led a team.", events: [] },
+    { question: "And in Berlin?", reply: "Yes.", events: [] },
+  ];
+  const multi: CaseRun = { ...run, result: { ...run.result, reply: "Yes.", turns } };
+  expect(JSON.parse(caseSpanAttributes(multi, c, header)["input.value"] as string)).toEqual({
+    question: "And in Berlin?",
+    history: [...run.history, { role: "user", text: "Is he a fit?" }, { role: "assistant", text: "He led a team." }],
+  });
+});
+
 test("caseLanguage is ru for a question with a Cyrillic word, else en", () => {
   expect(caseLanguage({ question: "Где работал Эдгар?" })).toBe("ru");
   expect(caseLanguage({ question: "Where did Edgar work?" })).toBe("en");
