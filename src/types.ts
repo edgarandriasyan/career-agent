@@ -15,6 +15,11 @@ export type EvalCase = {
   mustInclude?: string[];
   mustNotInclude?: string[];
   expectHandoff?: boolean;
+  /**
+   * The reply may point to the contact buttons after answering (a "not a match" fit answer, Edgar
+   * 2026-11-23): handoff and false-refusal then count only a fallback event as a handoff.
+   */
+  contactAllowed?: boolean;
   sections?: string[];
   judge?: string;
   /** Absent means "handwritten"; "tuple" and "deepeval-synth" are the synthetic sources. */

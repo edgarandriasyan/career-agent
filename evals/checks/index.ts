@@ -13,7 +13,8 @@ import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../../src/ty
  *
  * Handoff rule: a reply hands off when the agent sent a fallback event (the page shows the contact
  * buttons) or the reply text sends the visitor to Edgar or the contact buttons (HANDOFF below).
- * A bare mention of "contact" in another sense does not count.
+ * A bare mention of "contact" in another sense does not count. On contactAllowed cases only the
+ * fallback event counts (handoffFor), so an answer that also offers the contact buttons passes.
  */
 
 export type CheckInput = {
@@ -63,6 +64,9 @@ const HANDOFF = new RegExp(
 export const handedOff = (reply: string, events: AgentEvent[]): boolean =>
   events.some((e) => e.type === "fallback") || HANDOFF.test(reply);
 
+const handoffFor = (c: EvalCase, reply: string, events: AgentEvent[]): boolean =>
+  c.contactAllowed ? events.some((e) => e.type === "fallback") : handedOff(reply, events);
+
 const EMOJI = /\p{Extended_Pictographic}/u;
 const NOT_EMOJI = /[©®™]/g; // copyright, registered, trademark signs
 const URL_RE = /https?:\/\/[^\s<>()"']+/g;
@@ -82,9 +86,8 @@ function scripts(s: string) {
 }
 
 export const CODE_CHECKS: Record<string, CheckFn> = {
-  reply: ({ reply, events }) => [
-    { name: "reply", pass: events.some((e) => e.type === "fallback") || reply.trim() !== "", reason: "no reply and no fallback" },
-  ],
+  /** An empty visible reply fails even when a fallback showed the contact buttons (Edgar 2026-11-23). */
+  reply: ({ reply }) => [{ name: "reply", pass: reply.trim() !== "", reason: "empty visible reply" }],
   mustInclude: ({ c, reply }) =>
     (c.mustInclude ?? []).map((s, i) => ({ name: `mustInclude#${i + 1}`, pass: includes(reply.toLowerCase(), s), reason: "required text missing" })),
   mustNotInclude: ({ c, reply }) =>
@@ -94,7 +97,7 @@ export const CODE_CHECKS: Record<string, CheckFn> = {
       ? []
       : [{
           name: "handoff",
-          pass: handedOff(reply, events) === c.expectHandoff,
+          pass: handoffFor(c, reply, events) === c.expectHandoff,
           reason: c.expectHandoff ? "no handoff to Edgar or contact buttons" : "unexpected handoff",
         }],
   "tone:no-em-dash": ({ reply }) => [{ name: "tone:no-em-dash", pass: !reply.includes("—"), reason: "reply contains an em dash" }],
@@ -102,7 +105,7 @@ export const CODE_CHECKS: Record<string, CheckFn> = {
   /** False-refusal population: recruiter cases and expectHandoff:false cases. */
   "false-refusal": ({ c, reply, events }) =>
     c.category === "recruiter" || c.expectHandoff === false
-      ? [{ name: "false-refusal", pass: !handedOff(reply, events), reason: "handed off or fell back on an answerable question" }]
+      ? [{ name: "false-refusal", pass: !handoffFor(c, reply, events), reason: "handed off or fell back on an answerable question" }]
       : [],
   /**
    * A question with any Cyrillic word (and no Armenian letter) needs a Russian reply; any other

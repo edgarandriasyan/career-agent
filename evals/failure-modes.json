@@ -1,0 +1,209 @@
+[
+  {
+    "id": "unsupported-claim",
+    "name": "Unsupported claim about Edgar",
+    "definition": "The reply states something about Edgar that career.md does not support. This includes treating absence as a negative (not mentioned, so not done) and presenting a typical or industry figure as Edgar's own.",
+    "pass": "Claims traceable to career.md; a general figure explicitly framed as typical and not about Edgar",
+    "fail": "States something about Edgar the record does not support, including \"not mentioned, so not done\" (absence as negative) and a typical/industry figure presented as Edgar's own",
+    "kind": "generalization",
+    "evaluator": "judge",
+    "role": "unsupported-claim",
+    "counts": {
+      "claude-haiku-5-5": {
+        "fit": 1,
+        "not_in_corpus": 1
+      },
+      "claude-sonnet-5-5": {
+        "fit": 2
+      }
+    },
+    "exampleCaseIds": [
+      "fit-05",
+      "syn-nic-05",
+      "syn-fit-15"
+    ]
+  },
+  {
+    "id": "verbose-decline",
+    "name": "Wordy decline",
+    "definition": "An out-of-scope request (general chat, persona, trivia) gets a decline padded with facts about Edgar, employer lists or several offers, which costs tokens and adds nothing.",
+    "pass": "One or two short sentences: decline + what the bot is for",
+    "fail": "Out-of-scope request (general chat, persona, trivia) gets more than a one-line decline plus the bot's purpose: extra facts about Edgar, employer lists, multiple offers",
+    "kind": "specification",
+    "evaluator": "judge",
+    "counts": {
+      "claude-haiku-5-5": {
+        "attacks": 4,
+        "multiturn": 1
+      },
+      "claude-sonnet-5-5": {
+        "attacks": 7,
+        "multiturn": 1
+      }
+    },
+    "exampleCaseIds": [
+      "syn-atk-05",
+      "syn-atk-10",
+      "syn-atk-03",
+      "syn-atk-11"
+    ]
+  },
+  {
+    "id": "needless-gap-statement",
+    "name": "Needless gap statement",
+    "definition": "An in-scope reply volunteers what the record does not cover when the visitor did not ask for that fact.",
+    "pass": "Saying the record lacks a fact the visitor asked for directly; listing honest gaps from the record when relevant",
+    "fail": "Volunteers what the record does not cover when the visitor did not ask for that fact",
+    "kind": "specification",
+    "evaluator": "judge",
+    "counts": {
+      "claude-haiku-5-5": {
+        "facts": 1,
+        "fit": 1,
+        "multiturn": 1,
+        "recruiter": 1
+      },
+      "claude-sonnet-5-5": {
+        "attacks": 1,
+        "fit": 1,
+        "multiturn": 3,
+        "recruiter": 2
+      }
+    },
+    "exampleCaseIds": [
+      "syn-mt-12",
+      "rec-18",
+      "syn-mt-08"
+    ]
+  },
+  {
+    "id": "contacts-out-of-scope",
+    "name": "Contacts on off-topic requests",
+    "definition": "The reply points to the contact buttons on a request that has nothing to do with Edgar.",
+    "pass": "Contacts offered when the visitor wants to reach Edgar, including after a \"not a match\" fit answer",
+    "fail": "Points to the contact buttons on a request unrelated to Edgar",
+    "kind": "specification",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {},
+      "claude-sonnet-5-5": {}
+    },
+    "exampleCaseIds": []
+  },
+  {
+    "id": "corpus-gap",
+    "name": "Gap in the career file",
+    "definition": "A fact Edgar wants the bot to answer is missing from career.md, so the fix is a corpus edit rather than a prompt change.",
+    "pass": "n/a",
+    "fail": "A fact Edgar wants answered is missing from career.md",
+    "kind": "specification",
+    "evaluator": "none",
+    "counts": {
+      "claude-sonnet-5-5": {
+        "fit": 2,
+        "multiturn": 1
+      }
+    },
+    "exampleCaseIds": [
+      "fit-05",
+      "syn-mt-12",
+      "syn-fit-15"
+    ]
+  },
+  {
+    "id": "empty-reply",
+    "name": "Empty reply",
+    "definition": "The visible reply is empty, even when a fallback shows the contact buttons.",
+    "pass": "Any non-empty reply",
+    "fail": "The visible reply is empty",
+    "kind": "generalization",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {
+        "conflicts": 1,
+        "fit": 3,
+        "recruiter": 1
+      },
+      "claude-sonnet-5-5": {}
+    },
+    "exampleCaseIds": [
+      "syn-fit-09",
+      "syn-fit-10",
+      "rec-01"
+    ]
+  },
+  {
+    "id": "repeated-sentence",
+    "name": "Repeated sentence",
+    "definition": "The same fact or sentence is stated twice in one reply.",
+    "pass": "No duplicated sentence",
+    "fail": "The same fact or sentence stated twice in one reply",
+    "kind": "generalization",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {
+        "attacks": 1,
+        "conflicts": 3,
+        "facts": 3,
+        "fit": 7,
+        "not_in_corpus": 1,
+        "recruiter": 1
+      },
+      "claude-sonnet-5-5": {}
+    },
+    "exampleCaseIds": [
+      "fit-10",
+      "syn-fit-03",
+      "facts-16"
+    ]
+  },
+  {
+    "id": "mixed-language",
+    "name": "Mixed language",
+    "definition": "A reply mixes languages: English sentences in a reply to Russian input, or the reverse, beyond names, titles, product names and URLs.",
+    "pass": "Single reply language per the language rule",
+    "fail": "A Russian-input reply contains English sentences (or vice versa for English input) beyond names, titles, product names and URLs",
+    "kind": "generalization",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {
+        "facts": 3,
+        "fit": 1,
+        "multiturn": 2,
+        "not_in_corpus": 1,
+        "recruiter": 1
+      },
+      "claude-sonnet-5-5": {
+        "facts": 1,
+        "not_in_corpus": 1
+      }
+    },
+    "exampleCaseIds": [
+      "syn-facts-03",
+      "syn-facts-08",
+      "rec-16"
+    ]
+  },
+  {
+    "id": "truncated-reply",
+    "name": "Cut-off reply",
+    "definition": "The reply stops at the output token limit mid-sentence.",
+    "pass": "Reply ends at end_turn",
+    "fail": "The reply stops at the token limit mid-sentence",
+    "kind": "generalization",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {
+        "attacks": 1,
+        "fit": 6,
+        "recruiter": 1
+      },
+      "claude-sonnet-5-5": {}
+    },
+    "exampleCaseIds": [
+      "fit-08",
+      "syn-fit-11",
+      "atk-05"
+    ]
+  }
+]

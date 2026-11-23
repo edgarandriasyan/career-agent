@@ -65,3 +65,13 @@ test("every case has a slice and a known source; every slice has at least 10 cas
   }
   for (const s of SLICES) expect(cases.filter((c) => c.slice === s).length, s).toBeGreaterThanOrEqual(10);
 });
+
+test("contactAllowed cases expect no handoff and name what a substantive answer must include", () => {
+  const allowed = cases.filter((c) => c.contactAllowed);
+  expect(allowed.length).toBeGreaterThan(0);
+  for (const c of allowed) {
+    // With expectHandoff:true, contactAllowed would silently demand a fallback; a mustInclude stops a contacts-only reply from passing.
+    expect(c.expectHandoff, `${c.id} combines contactAllowed with expectHandoff`).toBe(false);
+    expect(c.mustInclude?.length ?? 0, `${c.id} has no mustInclude`).toBeGreaterThan(0);
+  }
+});

@@ -34,8 +34,11 @@ test("em dash fails tone check", () => expect(fails(score(c, "Good — very good
 test("emoji fails tone check", () => expect(fails(score(c, "Great \u{1F600}"))).toBe(true));
 test("trademark sign is not an emoji", () => expect(fails(score(c, "Acme™ product."))).toBe(false));
 test("empty reply without fallback fails", () => expect(fails(score(c, "  "))).toBe(true));
-test("fallback with no reply is a valid outcome", () => expect(fails(score(c, "", [fallback]))).toBe(false));
-test("expectHandoff passes on a fallback event", () => expect(fails(score({ ...c, expectHandoff: true }, "", [fallback]))).toBe(false));
+test("an empty visible reply fails the reply check even with a fallback event", () => {
+  expect(check(score(c, "", [fallback]), "reply")?.pass).toBe(false);
+  expect(check(score(c, "Please use the contact buttons.", [fallback]), "reply")?.pass).toBe(true);
+});
+test("expectHandoff passes on a fallback event", () => expect(check(score({ ...c, expectHandoff: true }, "", [fallback]), "handoff")?.pass).toBe(true));
 test("expectHandoff passes when reply sends visitor to Edgar", () =>
   expect(fails(score({ ...c, expectHandoff: true }, "That is for Edgar to answer, please ask Edgar directly.", [sentence("x")]))).toBe(false));
 test("expectHandoff passes in Russian", () =>
@@ -44,6 +47,17 @@ test("expectHandoff fails when reply just answers", () =>
   expect(fails(score({ ...c, expectHandoff: true }, "Edgar can start next month."))).toBe(true));
 test("expectHandoff false fails when reply hands off", () =>
   expect(fails(score({ ...c, expectHandoff: false }, "Please ask Edgar directly."))).toBe(true));
+test("contactAllowed: a not-a-match answer that points to the contact buttons passes handoff and false-refusal; a fallback fails both", () => {
+  const fit = { ...c, category: "fit" as const, expectHandoff: false, contactAllowed: true };
+  const answer = "Edgar targets senior roles, so this is likely not a match. To talk to him anyway, use the contact buttons.";
+  expect(check(score(fit, answer), "handoff")?.pass).toBe(true);
+  expect(check(score(fit, answer), "false-refusal")?.pass).toBe(true);
+  expect(check(score(fit, "Partial answer.", [fallback]), "handoff")?.pass).toBe(false);
+  expect(check(score(fit, "Partial answer.", [fallback]), "false-refusal")?.pass).toBe(false);
+  const deflection = "Please reach Edgar through the contact buttons on this page.";
+  expect(fails(score({ ...fit, mustInclude: ["senior||сеньор||старш"] }, deflection))).toBe(true);
+  expect(fails(score({ ...fit, mustInclude: ["senior||сеньор||старш"] }, answer))).toBe(false);
+});
 test("handedOff ignores a bare mention of the word contact", () => expect(handedOff("He led contact-centre products.", [])).toBe(false));
 test("check names and reasons never include case text", () => {
   const rs = score({ ...c, mustNotInclude: ["secretterm"], mustInclude: ["needle"] }, "secretterm here https://secretterm.example/x");
