@@ -7,6 +7,7 @@ import { createDataset } from "@arizeai/phoenix-client/datasets";
 import { evaluateExperiment, getExperiment, runExperiment } from "@arizeai/phoenix-client/experiments";
 import { context, register, trace } from "@arizeai/phoenix-otel";
 import type { JudgeClient } from "../judge";
+import { ablation } from "../ablate";
 import { JUDGES } from "../judges";
 import { buildHeader, writeResults } from "../results";
 import {
@@ -18,6 +19,7 @@ import { DATASETS, loadHoldout, PRIVATE_CASES, PUBLIC_CASES, toExample, type Cre
 import { PHOENIX_URL, phoenixUp, usePhoenixEnv } from "./env";
 import { codeEvaluators, costEvaluator, deepevalEvaluator, judgeEvaluator, type Budget, type TaskOutput } from "./evaluators";
 import { activeTraceId, caseSpanAttributes, recordGuardrails, withCaseSpan } from "./trace";
+import type { CaseSource } from "../../src/types";
 import type { Evaluator, Example, Logger, RanExperiment, RunExperimentParams } from "./types";
 
 /*
@@ -27,7 +29,7 @@ import type { Evaluator, Example, Logger, RanExperiment, RunExperimentParams } f
  *
  *   npm run phoenix:experiment -- --model <id> --dataset public|private --split dev|holdout|all
  *     [--ids <list>] [--repeat n] [--agent real|stub|<module>] [--judges <id,...>] [--dry-run n]
- *     --budget <usd> --name <name>
+ *     [--ablate <section>] --budget <usd> --name <name>
  *   npm run phoenix:evaluate -- --experiment <id> --evaluators <names> --budget <usd>
  *
  * - Refuses to start unless Phoenix answers on 127.0.0.1:6006 (before any paid call).
@@ -70,6 +72,9 @@ export type ExperimentOptions = {
   dryRun?: number;
   status?: EvaluatorStatus;
   holdout: Set<string>;
+  /** Ablation runs: the reduced system prompt (the agent was built with it) and source "ablation". */
+  system?: string;
+  source?: CaseSource;
 };
 export type ExperimentDeps = {
   phoenixUp: (endpoint: string) => Promise<boolean>;
@@ -119,7 +124,7 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
   const judges = await judgeHeaders(o.judges);
   const header0 = buildHeader({
     model: o.model, agent: o.kind, startedAt, repeat: o.repeat, only: null, ids: o.ids ?? null, judgeSkipped: false, incomplete: false,
-    stoppedForBudget: false, costUsd: 0, judgeCostUsd: 0, career: o.career, cases, judges,
+    stoppedForBudget: false, costUsd: 0, judgeCostUsd: 0, career: o.career, cases, judges, system: o.system,
   });
 
   const runs: CaseRun[] = [];
@@ -143,7 +148,7 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
         (r: CaseRun) => caseSpanAttributes(r, c, header0),
         async () => {
           const r = await runCase(c, {
-            agent: o.agent, judges: o.judges, rep, model: o.model, career: o.career, status: o.status, judgeClient: o.judgeClient,
+            agent: o.agent, judges: o.judges, rep, model: o.model, career: o.career, source: o.source, status: o.status, judgeClient: o.judgeClient,
           });
           r.result.traceId = activeTraceId();
           recordGuardrails(r.result.checks);
@@ -196,7 +201,7 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
   const header = {
     ...buildHeader({
       model: o.model, agent: o.kind, startedAt, repeat: o.repeat, only: null, ids: o.ids ?? null, judgeSkipped, incomplete, stoppedForBudget,
-      costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career: o.career, cases, judges,
+      costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career: o.career, cases, judges, system: o.system,
     }),
     ...(ran ? { experimentId: ran.id } : {}),
   };
@@ -277,12 +282,12 @@ async function experimentMain(args: string[]) {
     args,
     options: {
       model: { type: "string" }, dataset: { type: "string" }, split: { type: "string" }, ids: { type: "string" }, repeat: { type: "string" },
-      agent: { type: "string" }, judges: { type: "string" }, "dry-run": { type: "string" }, budget: { type: "string" }, name: { type: "string" },
+      agent: { type: "string" }, judges: { type: "string" }, "dry-run": { type: "string" }, ablate: { type: "string" }, budget: { type: "string" }, name: { type: "string" },
     },
   });
   const usage =
     "Usage: npm run phoenix:experiment -- --model <id> --dataset public|private --split dev|holdout|all [--ids <list>] [--repeat n] " +
-    "[--agent real|stub|<module>] [--judges <id,...>] [--dry-run n] --budget <usd> --name <name>";
+    "[--agent real|stub|<module>] [--judges <id,...>] [--dry-run n] [--ablate <section>] --budget <usd> --name <name>";
   const repeat = Number(values.repeat ?? 1);
   const dryRun = values["dry-run"] !== undefined ? Number(values["dry-run"]) : undefined;
   const budgetUsd = Number(values.budget);
@@ -299,7 +304,13 @@ async function experimentMain(args: string[]) {
 
   usePhoenixEnv();
   const model = values.model!;
-  const { agent, kind } = await resolveAgent(agentName, model);
+  let abl: ReturnType<typeof ablation> | undefined;
+  try {
+    abl = values.ablate ? ablation(values.ablate) : undefined;
+  } catch (e) {
+    fail((e as Error).message);
+  }
+  const { agent, kind } = await resolveAgent(agentName, model, { system: abl?.system });
   const judges: GateJudge[] = judgeIds ? judgeIds.map((id) => ({ spec: JUDGES[id], model: "claude-sonnet-5-5" })) : judgesFor(kind, false);
   if (dataset === "private" && !existsSync(PRIVATE_CASES)) fail("No private cases.");
   const cases = loadCases([dataset === "private" ? PRIVATE_CASES : PUBLIC_CASES]);
@@ -310,7 +321,7 @@ async function experimentMain(args: string[]) {
   const client = phoenixClient();
   const out = await runPhoenixExperiment(
     {
-      cases, dataset, split, ids, repeat, agent, kind, judges, model, budgetUsd, name: values.name!, dryRun, holdout: loadHoldout(),
+      cases, dataset, split, ids, repeat, agent, kind, judges, model, budgetUsd, name: values.name!, dryRun, holdout: loadHoldout(), system: abl?.system, source: abl?.source,
       career: readFileSync(join(PUBLIC_ROOT, "corpus/career.md"), "utf8"),
       status: JSON.parse(readFileSync(join(HERE, "../validation/status.json"), "utf8")),
     },

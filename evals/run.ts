@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { ablation } from "./ablate";
 import { makeAgent as makeRealAgent } from "../src/eval-agent";
 import type { AgentEvent, CaseResult, CaseSource, CheckResult, EvalCase, Msg, Turn, Usage } from "../src/types";
 import { BUDGETS } from "./budgets";
@@ -18,7 +19,7 @@ import { applyStatus, casePass, gates, handedOff, mergeTurnSafety, scoreDetermin
  * Eval runner.
  *
  *   npm run evals -- --model <id> --cases <dir...> [--repeat n] [--only category] [--ids id,id,...]
- *                    [--agent real|stub|<module>] [--budget <usd>] [--no-judge]
+ *                    [--agent real|stub|<module>] [--budget <usd>] [--no-judge] [--ablate <section>]
  *
  * The agent is injected: an AgentFn takes a case (question and optional history) and yields the
  * same AgentEvents the production Worker streams; `onText` receives the raw model text (evals only).
@@ -32,6 +33,9 @@ import { applyStatus, casePass, gates, handedOff, mergeTurnSafety, scoreDetermin
  * `--budget` (default BUDGETS.full[model]) stops the run before the next case once agent plus judge
  * spend reaches it; the run is then INCOMPLETE. Use --no-judge to skip rubric cases (judgeSkipped);
  * stub and module agents are never judged, so a stub run with rubric cases is judgeSkipped and INCOMPLETE.
+ *
+ * `--ablate <section>` removes that section from the system prompt, tags every run source "ablation"
+ * (excluded from the gates) and records the reduced prompt's hash in the header.
  *
  * Output (both gitignored), see results.ts:
  *  - ../private/evals/results/<timestamp>.json: every run in full, with the raw model text.
@@ -302,6 +306,7 @@ async function main() {
       agent: { type: "string" },
       budget: { type: "string" },
       "no-judge": { type: "boolean" },
+      ablate: { type: "string" },
     },
   });
   const dirs = [...(values.cases ?? []), ...positionals];
@@ -311,7 +316,7 @@ async function main() {
   const budgetUsd = values.budget !== undefined ? Number(values.budget) : values.model ? BUDGETS.full[values.model] : undefined;
   const usage =
     "Usage: npm run evals -- --model <id> --cases <dir...> [--repeat n] [--only category] [--ids id,id,...] " +
-    "[--agent real|stub|<module>] [--budget <usd>] [--no-judge]";
+    "[--agent real|stub|<module>] [--budget <usd>] [--no-judge] [--ablate <section>]";
   if (!values.model || !dirs.length || !Number.isInteger(repeat) || repeat < 1 || (only && !CATEGORIES.includes(only)) ||
       (budgetUsd !== undefined && !(budgetUsd >= 0))) {
     console.error(usage);
@@ -319,7 +324,14 @@ async function main() {
   }
   const model = values.model;
 
-  const { agent, kind } = await resolveAgent(values.agent ?? "real", model);
+  let abl: ReturnType<typeof ablation> | undefined;
+  try {
+    abl = values.ablate ? ablation(values.ablate) : undefined;
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(1);
+  }
+  const { agent, kind } = await resolveAgent(values.agent ?? "real", model, { system: abl?.system });
   if (kind === "real" && budgetUsd === undefined) {
     console.error(`No standing budget for ${model}: pass --budget <usd>.`);
     process.exit(1);
@@ -337,7 +349,7 @@ async function main() {
   const startedAt = new Date().toISOString();
 
   const out = await runCases(cases, {
-    agent, judges, model, career, repeat, only, ids, budgetUsd, status,
+    agent, judges, model, career, repeat, only, ids, budgetUsd, status, source: abl?.source,
     onResult: (run, c) => formatRun(run, c.isPrivate).forEach((l) => console.log(l)),
   });
   const { results, costUsd, judgeCostUsd, judgeSkipped, stoppedForBudget } = out;
@@ -345,7 +357,7 @@ async function main() {
   const incomplete = judgeSkipped || !!only || !!ids || stoppedForBudget;
   const header = buildHeader({
     model, agent: kind, startedAt, repeat, only: only ?? null, ids: ids ?? null, judgeSkipped, incomplete, stoppedForBudget,
-    costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career, cases, judges: await judgeHeaders(judges),
+    costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career, cases, judges: await judgeHeaders(judges), system: abl?.system,
   });
   const stamp = header.startedAt.replace(/[:.]/g, "-");
   const { publicPath, privatePath } = writeResults(stamp, header, out.runs, (id) => !!byId.get(id)?.isPrivate);
