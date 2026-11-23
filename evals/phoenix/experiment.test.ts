@@ -8,7 +8,7 @@ import type { AgentEvent } from "../../src/types";
 import { buildHeader, writeResults, type ResultsFile } from "../results";
 import { runCases, type AgentFn, type LoadedCase } from "../run";
 import { codeEvaluators, costEvaluator, judgeEvaluator, type TaskOutput } from "./evaluators";
-import { quietLogger, runPhoenixExperiment, type ExperimentDeps, type ExperimentOptions } from "./experiment";
+import { guardBestEffortPosts, quietLogger, runPhoenixExperiment, type ExperimentDeps, type ExperimentOptions } from "./experiment";
 import type { Example, ExperimentRun, RanExperiment, RunExperimentParams } from "./types";
 
 const exporter = new InMemorySpanExporter();
@@ -187,4 +187,13 @@ test("a Phoenix error after the tasks ran still writes the results, marked incom
   expect(f.header.costUsd).toBeCloseTo(0.03);
   expect(f.runs.map((r) => r.id).sort()).toEqual(["a", "b", "c"]);
   expect(lines.some((l) => l.includes(exp.publicDir))).toBe(true);
+});
+
+test("guardBestEffortPosts: an unawaited failing POST is reported, not an unhandled rejection; awaited POSTs still reject", async () => {
+  const errors: unknown[] = [];
+  const client = guardBestEffortPosts({ POST: () => Promise.reject(new Error("connect ETIMEDOUT")) }, (e) => errors.push(e));
+  void client.POST(); // what Phoenix does with each evaluation post
+  await expect(client.POST()).rejects.toThrow("ETIMEDOUT");
+  await new Promise((r) => setTimeout(r, 0));
+  expect(errors).toHaveLength(2);
 });

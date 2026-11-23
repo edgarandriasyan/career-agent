@@ -208,6 +208,34 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
   return { ...out, paths, incomplete };
 }
 
+/**
+ * Phoenix's runExperiment and evaluateExperiment post each evaluation without awaiting it ("best
+ * effort"), with no catch. One failed post (for example ETIMEDOUT) is then an unhandled rejection
+ * that kills the process before writeResults, losing the paid run's local record (runs B and D,
+ * 2026-11-23). This marks every POST's promise as handled and reports failures to onError; callers
+ * that await a POST still see its rejection.
+ */
+export function guardBestEffortPosts<C extends { POST: (...a: never[]) => Promise<unknown> }>(client: C, onError: (e: unknown) => void): C {
+  const post = client.POST.bind(client);
+  client.POST = ((...a: Parameters<C["POST"]>) => {
+    const p = post(...a);
+    p.catch(onError);
+    return p;
+  }) as C["POST"];
+  return client;
+}
+
+/** A client whose lost evaluation posts are counted and reported once at exit, not fatal. */
+function phoenixClient() {
+  let lost = 0;
+  const client = guardBestEffortPosts(createClient({ options: { baseUrl: PHOENIX_URL } }), () => lost++);
+  process.on("beforeExit", () => {
+    if (lost) console.warn(`warning: ${lost} Phoenix post(s) failed; local results are complete, Phoenix may miss those evaluations.`);
+    lost = 0;
+  });
+  return client;
+}
+
 /** Evaluators by name for phoenix:evaluate; paid ones share `budget`. */
 export function evaluatorsByName(names: string[], o: { career: string; budget: Budget }): Evaluator[] {
   const code = codeEvaluators();
@@ -234,7 +262,7 @@ async function evaluateMain(args: string[]) {
     fail("Usage: npm run phoenix:evaluate -- --experiment <id> --evaluators <names> --budget <usd>");
   usePhoenixEnv();
   if (!(await phoenixUp(PHOENIX_URL))) fail(`Phoenix is not reachable at ${PHOENIX_URL}; start private/phoenix/serve.sh`);
-  const client = createClient({ options: { baseUrl: PHOENIX_URL } });
+  const client = phoenixClient();
   const career = readFileSync(join(PUBLIC_ROOT, "corpus/career.md"), "utf8");
   const budget: Budget = { limitUsd: budgetUsd, spentUsd: 0 };
   const evaluators = evaluatorsByName(values.evaluators!.split(",").map((s) => s.trim()).filter(Boolean), { career, budget });
@@ -279,7 +307,7 @@ async function experimentMain(args: string[]) {
   const unknown = ids?.filter((id) => !cases.some((c) => c.id === id)) ?? [];
   if (unknown.length) fail(`Unknown case ids: ${unknown.join(", ")}`);
 
-  const client = createClient({ options: { baseUrl: PHOENIX_URL } });
+  const client = phoenixClient();
   const out = await runPhoenixExperiment(
     {
       cases, dataset, split, ids, repeat, agent, kind, judges, model, budgetUsd, name: values.name!, dryRun, holdout: loadHoldout(),
