@@ -16,7 +16,7 @@ Edgar is open to senior, lead, group or head of product roles, and to roles lead
 
 ## Location and work setup
 
-Edgar is based in Yerevan, Armenia. Remote is fine, and he is open to suggestions on hybrid. Temporary travel anywhere is fine, even for a month at a time. Relocating is the harder question and is something to discuss with Edgar directly. He works the hiring company's hours.
+Edgar is based in Yerevan, Armenia. Remote is fine, and he is open to suggestions on hybrid. Temporary travel anywhere is fine, even for a month at a time. If a visitor asks about relocating: it is the harder question and is something to discuss with Edgar directly. He works the hiring company's hours.
 
 ## Work authorization
 
