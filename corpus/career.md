@@ -24,7 +24,7 @@ Edgar is an Armenian citizen. He prefers a contract via B2B.
 
 ## Contact
 
-Email: edgar.andriasyan@gmail.com. Edgar can also be reached on WhatsApp and on Telegram (https://t.me/edgarandriasyan) through the contact buttons on this page.
+Email: edgar.andriasyan@gmail.com. Edgar can also be reached on WhatsApp and on Telegram (https://t.me/edgarandriasyan) through the contact buttons on this page. Any of these channels is fine; he has no preferred one.
 
 LinkedIn: https://www.linkedin.com/in/edgarandriasyan. Website: https://edgarandriasyan.com. Public portfolio: https://app.notion.com/p/edgarandriasyan/portfolio-6be4e64ade974c89b18b608c58dbd10e.
 
@@ -246,6 +246,7 @@ Before product, Edgar was marketing manager at BMW Group Armenia (BMW, MINI and 
 ## Skills and tools
 
 - AI and automation: AWS Bedrock (Claude, Llama), n8n, Claude Code, agentic workflow automation, MCP integrations with ChatGPT and Claude.
+- He tries many AI tools and mainly sticks to the best ones. Tools change fast, so a tool not named here is not evidence that he hasn't used it. Building and shipping autonomously with Claude Code is part of his work.
 - Data: SQL, mostly in Databricks, Amplitude and direct queries to PostgreSQL; Amplitude, Databricks, Tableau, Google Analytics.
 - Payments and monetisation: Adyen, Chargebee, Avalara, Paddle.
 - Platform and technical: API product ownership, GitHub, VS Code, VMware vSphere and vRealize Operations, Autodesk Fusion 360; working knowledge of OOP, Java, C++ and HTML/CSS.
@@ -265,7 +266,6 @@ He groups his strengths into four areas: product strategy, product execution, cu
 - No healthcare, diagnostics or life-sciences background.
 - No SIEM, threat-detection or security-engineering background.
 - His AML exposure is seven months of communications ownership at a banking-as-a-service platform. That is adjacent to owning AML risk-control products, not the same thing.
-- No record of using Bolt.new, Lovable, Replit or Cursor specifically. Claude Code and building and shipping autonomously are part of his work.
 
 ## Demo videos
 
