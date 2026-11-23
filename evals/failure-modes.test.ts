@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
+import { CODE_CHECKS } from "./checks";
 import { loadCases } from "./run";
 
 /* The E11 failure taxonomy (failure-modes.json): one entry per failure mode, with its check or judge id. */
@@ -49,4 +50,12 @@ test("mode ids are kebab-case and unique; each role is used at most once", () =>
   const roles = modes.flatMap((m) => (m.role ? [m.role] : []));
   for (const r of roles) expect(ROLES).toContain(r);
   expect(new Set(roles).size).toBe(roles.length);
+});
+
+test("every code mode has a CODE_CHECKS entry named by its id and marked code in status.json", () => {
+  const status = JSON.parse(readFileSync(resolve(__dirname, "validation/status.json"), "utf8"));
+  for (const m of modes.filter((m) => m.evaluator === "code")) {
+    expect(CODE_CHECKS[m.id], m.id).toBeTypeOf("function");
+    expect(status[m.id]?.status, m.id).toBe("code");
+  }
 });

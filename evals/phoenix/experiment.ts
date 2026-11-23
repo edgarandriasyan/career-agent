@@ -41,6 +41,8 @@ import type { Evaluator, Example, Logger, RanExperiment, RunExperimentParams } f
  *   uploads its dataset, so Phoenix always holds the cases being run.
  * - --dry-run n: n examples, nothing recorded in the experiment tables and no results files; spans
  *   still go to the project career-agent-evals (a free plumbing check with --agent stub).
+ * - A Phoenix error after runs were made (e.g. a timeout on its final fetch) still writes the results
+ *   files, marked incomplete and without experimentId, then rethrows.
  * - Private dataset: Phoenix's logger is quiet (errors as ids only), console lines are ids, pass and spend.
  * - Evaluate: names are "code" (every code family), a code family, "cost_usd", a judge id (J0_rubric)
  *   or a DeepEval score name ("deepeval/faithfulness"). Paid ones share --budget.
@@ -159,7 +161,10 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
 
   // A dry run records nothing and runExperiment registers no tracer then: send the spans to a project of our own.
   const dryProvider = o.dryRun ? register({ projectName: DRY_RUN_PROJECT, url: PHOENIX_URL, batch: false, global: true }) : undefined;
-  let ran: RanExperiment;
+  // A late Phoenix error (for example its final experiment fetch) must not discard the paid runs already
+  // in memory: write them as an incomplete run without an experiment id, print the paths, then rethrow.
+  let ran: RanExperiment | undefined;
+  let failure: unknown;
   try {
     ran = await deps.runExperiment({
       dataset: { datasetName, ...(o.split === "all" ? {} : { splits: [o.split] }) },
@@ -176,23 +181,30 @@ export async function runPhoenixExperiment(o: ExperimentOptions, deps: Experimen
       ...(o.dryRun ? { dryRun: o.dryRun } : {}),
       ...(isPrivate ? { logger: quietLogger(print) } : {}),
     });
+  } catch (e) {
+    failure = e;
   } finally {
     await dryProvider?.shutdown();
   }
+  if (failure !== undefined && (o.dryRun || !runs.length)) throw failure;
 
   const costUsd = runs.reduce((s, r) => s + r.spend.costUsd, 0);
   const judgeCostUsd = runs.reduce((s, r) => s + r.spend.judgeCostUsd, 0);
-  const out = { experimentId: ran.id, runs, stoppedForBudget, costUsd, judgeCostUsd, judgeSkipped };
+  const out = { experimentId: ran?.id, runs, stoppedForBudget, costUsd, judgeCostUsd, judgeSkipped };
   if (o.dryRun) return { ...out, paths: null };
-  const incomplete = judgeSkipped || !!o.ids || o.split !== "all" || stoppedForBudget;
+  const incomplete = failure !== undefined || judgeSkipped || !!o.ids || o.split !== "all" || stoppedForBudget;
   const header = {
     ...buildHeader({
       model: o.model, agent: o.kind, startedAt, repeat: o.repeat, only: null, ids: o.ids ?? null, judgeSkipped, incomplete, stoppedForBudget,
       costUsd: +costUsd.toFixed(6), judgeCostUsd: +judgeCostUsd.toFixed(6), career: o.career, cases, judges,
     }),
-    experimentId: ran.id,
+    ...(ran ? { experimentId: ran.id } : {}),
   };
   const paths = writeResults(startedAt.replace(/[:.]/g, "-"), header, runs, (id) => !!byId.get(id)?.isPrivate, deps.dirs);
+  if (failure !== undefined) {
+    print(`Phoenix failed after ${runs.length} runs; results written as incomplete:\n  ${paths.publicPath}\n  ${paths.privatePath}`);
+    throw failure;
+  }
   return { ...out, paths, incomplete };
 }
 

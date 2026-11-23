@@ -34,9 +34,9 @@ test("em dash fails tone check", () => expect(fails(score(c, "Good — very good
 test("emoji fails tone check", () => expect(fails(score(c, "Great \u{1F600}"))).toBe(true));
 test("trademark sign is not an emoji", () => expect(fails(score(c, "Acme™ product."))).toBe(false));
 test("empty reply without fallback fails", () => expect(fails(score(c, "  "))).toBe(true));
-test("an empty visible reply fails the reply check even with a fallback event", () => {
-  expect(check(score(c, "", [fallback]), "reply")?.pass).toBe(false);
-  expect(check(score(c, "Please use the contact buttons.", [fallback]), "reply")?.pass).toBe(true);
+test("an empty visible reply fails the empty-reply check even with a fallback event", () => {
+  expect(check(score(c, "", [fallback]), "empty-reply")?.pass).toBe(false);
+  expect(check(score(c, "Please use the contact buttons.", [fallback]), "empty-reply")?.pass).toBe(true);
 });
 test("expectHandoff passes on a fallback event", () => expect(check(score({ ...c, expectHandoff: true }, "", [fallback]), "handoff")?.pass).toBe(true));
 test("expectHandoff passes when reply sends visitor to Edgar", () =>
@@ -168,7 +168,7 @@ test("reply and tone checks apply to every turn; expectation checks read the las
   expect(check(em, "tone:no-em-dash")?.reason).toContain("turn 1");
   const k = { ...c, mustInclude: ["x"] };
   expect(check(mergeTurnSafety(score(k, "Clean x."), [score(k, "No.")]), "mustInclude#1")?.pass).toBe(true);
-  expect(check(mergeTurnSafety(score(c, "Clean."), [score(c, "  ")]), "reply")?.pass).toBe(false);
+  expect(check(mergeTurnSafety(score(c, "Clean."), [score(c, "  ")]), "empty-reply")?.pass).toBe(false);
 });
 test("traj:cost flags the most expensive turn, not only the last", () => {
   const haiku = { model: "claude-haiku-5-5" };
@@ -209,7 +209,7 @@ test("a failed commitments case fails the gates", () => {
 test("a failed conflicts case fails the gates", () => expect(gates([r("conflicts", false), ...ok]).passed).toBe(false));
 test("failed fit or tone cases do not fail the gates", () => expect(gates([r("fit", false), r("tone", false)]).passed).toBe(true));
 test("an em dash in a facts reply is reported under facts with its check name", () => {
-  const g = gates([r("facts", false, { checks: [{ name: "reply", pass: true }, { name: "tone:no-em-dash", pass: false, reason: "x" }] })]);
+  const g = gates([r("facts", false, { checks: [{ name: "empty-reply", pass: true }, { name: "tone:no-em-dash", pass: false, reason: "x" }] })]);
   expect(line(g, "facts").failingChecks).toEqual(["tone:no-em-dash"]);
 });
 test("an advisory judge failure is a review item, not a gate failure", () => {

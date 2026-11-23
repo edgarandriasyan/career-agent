@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { runJudge, type JudgeClient } from "./judge";
 import { JUDGES } from "./judges";
@@ -14,10 +15,15 @@ const fake = (r: Partial<JudgeResponse>, seen: JudgeRequest[] = []): JudgeClient
 });
 const verdict = (critique: string, result: string) => [{ type: "text", text: JSON.stringify({ critique, result }) }];
 
-test("J0_rubric is registered and sees the reply and rubric only", () => {
+test("J0_rubric is registered and sees the history, reply and rubric, never the question", () => {
   expect(JUDGES.J0_rubric).toBe(J0_RUBRIC);
   expect(J0_RUBRIC.id).toBe("J0_rubric");
-  expect(J0_RUBRIC.inputs).toEqual(["reply", "rubric"]);
+  expect(J0_RUBRIC.inputs).toEqual(["history", "reply", "rubric"]);
+});
+
+test("validation/status.json records J0's current prompt hash", async () => {
+  const status = JSON.parse(readFileSync(new URL("validation/status.json", import.meta.url), "utf8"));
+  expect(status.J0_rubric.promptHash).toBe(await judgePromptHash(J0_RUBRIC));
 });
 
 test("runJudge sends one request built from the spec and returns the verdict with its prompt hash and cost", async () => {
@@ -29,10 +35,12 @@ test("runJudge sends one request built from the spec and returns the verdict wit
     },
     seen,
   );
-  const v = await runJudge(J0_RUBRIC, { question: "SECRET-QUESTION", reply: "REPLY-TEXT", rubric: "RUBRIC-TEXT" }, { client, model: "claude-sonnet-5-5", corpus: "CORPUS-TEXT" });
+  const history = [{ role: "user" as const, text: "EARLIER-QUESTION" }, { role: "assistant" as const, text: "EARLIER-REPLY" }];
+  const v = await runJudge(J0_RUBRIC, { question: "SECRET-QUESTION", history, reply: "REPLY-TEXT", rubric: "RUBRIC-TEXT" }, { client, model: "claude-sonnet-5-5", corpus: "CORPUS-TEXT" });
   expect(seen).toHaveLength(1);
   expect(seen[0].model).toBe("claude-sonnet-5-5");
   expect(JSON.stringify(seen[0])).not.toContain("SECRET-QUESTION");
+  expect(seen[0].messages[0].content).toContain("<history>\nuser: EARLIER-QUESTION\nassistant: EARLIER-REPLY\n</history>");
   expect(v).toMatchObject({ judgeId: "J0_rubric", model: "claude-sonnet-5-5", pass: true, promptHash: await judgePromptHash(J0_RUBRIC) });
   expect(v.critique).toContain("led a team of 5");
   expect(v.error).toBeUndefined();

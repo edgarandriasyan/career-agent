@@ -1,5 +1,9 @@
 {
-  "reply": { "status": "code" },
+  "empty-reply": { "status": "code" },
+  "repeated-sentence": { "status": "code" },
+  "mixed-language": { "status": "code" },
+  "truncated-reply": { "status": "code" },
+  "contacts-out-of-scope": { "status": "code" },
   "mustInclude": { "status": "code" },
   "mustNotInclude": { "status": "code" },
   "handoff": { "status": "code" },
@@ -15,5 +19,5 @@
   "traj:latency": { "status": "code" },
   "final:history-visible-only": { "status": "code" },
   "final:spend-sum": { "status": "code" },
-  "J0_rubric": { "status": "not-a-judge" }
+  "J0_rubric": { "status": "not-a-judge", "promptHash": "677b3e8c6356", "date": "2026-11-23" }
 }

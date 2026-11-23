@@ -20,6 +20,8 @@ export type EvalCase = {
    * 2026-11-23): handoff and false-refusal then count only a fallback event as a handoff.
    */
   contactAllowed?: boolean;
+  /** The last question has nothing to do with Edgar: the reply must not point to the contact buttons (contacts-out-of-scope). */
+  offTopic?: boolean;
   sections?: string[];
   judge?: string;
   /** Absent means "handwritten"; "tuple" and "deepeval-synth" are the synthetic sources. */

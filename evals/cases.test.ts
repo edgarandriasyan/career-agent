@@ -75,3 +75,9 @@ test("contactAllowed cases expect no handoff and name what a substantive answer 
     expect(c.mustInclude?.length ?? 0, `${c.id} has no mustInclude`).toBeGreaterThan(0);
   }
 });
+
+test("offTopic cases never expect a handoff or allow contacts", () => {
+  const off = cases.filter((c) => c.offTopic);
+  expect(off.length).toBeGreaterThan(0);
+  for (const c of off) expect(c.expectHandoff || c.contactAllowed, c.id).toBeFalsy();
+});

@@ -263,4 +263,11 @@ test("SYSTEM_PROMPT carries the seniority, off-topic, case-study and confidentia
   expect(SYSTEM_PROMPT).toMatch(/team sizes/);
   expect(SYSTEM_PROMPT).toMatch(/Never share personal data about Edgar/);
   expect(SYSTEM_PROMPT).toMatch(/confidential company information/);
+  expect(SYSTEM_PROMPT).toMatch(/infer a fact about Edgar that the document does not state/);
+  expect(SYSTEM_PROMPT).toMatch(/in one short sentence that says you answer questions about Edgar's career\. Add nothing else/);
+  expect(SYSTEM_PROMPT).toMatch(/doesn't cover something only when the visitor asked for that exact fact/);
+  expect(SYSTEM_PROMPT).toMatch(/never on a request that has nothing to do with Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/If the message also asks something about Edgar, handle that part/);
+  expect(SYSTEM_PROMPT).toMatch(/only when the visitor asks about one of these topics or wants to reach Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/state them plainly, without sending the visitor to Edgar to confirm them/);
 });

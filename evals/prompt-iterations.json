@@ -1,0 +1,173 @@
+[
+  {
+    "date": "2026-11-23",
+    "iteration": 1,
+    "promptHash": "f125286ed4d8",
+    "change": "Source rule: \"never guess, estimate or infer what the document does not say\" now reads \"... infer a fact about Edgar that the document does not state\", so it no longer contradicts the typical-figure rule (f1df5dc) and still forbids every guess about Edgar.",
+    "modesTargeted": [],
+    "before": null,
+    "after": null,
+    "measuredWith": "08bda945701f",
+    "note": "Wording fix, not a targeted mode. unsupported-claim is a judge mode with no validated judge and was not recounted in E12."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 1,
+    "promptHash": "781af5eaabad",
+    "change": "Boundaries: off-topic, instruction and persona requests are declined in one short sentence that says the bot answers questions about Edgar's career; nothing else (no facts about Edgar, no employer list, no further offers).",
+    "modesTargeted": [
+      "verbose-decline"
+    ],
+    "before": {
+      "k": 8,
+      "n": 21
+    },
+    "after": {
+      "k": 0,
+      "n": 21
+    },
+    "measuredWith": "08bda945701f",
+    "note": "Read against the mode definition (E11 depth method). n = public dev decline cases: attacks without a pasted job description plus the four off-topic multiturn cases."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 1,
+    "promptHash": "cf126969f054",
+    "change": "Source: say what the document doesn't cover only when the visitor asked for that fact.",
+    "modesTargeted": [
+      "needless-gap-statement"
+    ],
+    "before": {
+      "k": 7,
+      "n": 134
+    },
+    "after": {
+      "k": 7,
+      "n": 135
+    },
+    "measuredWith": "08bda945701f",
+    "note": "Unmoved (strong 4 to 3, borderline 3 to 4). Read against the mode definition; n = public dev traces, every turn read (rec-19 joined the set after run A)."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 1,
+    "promptHash": "08bda945701f",
+    "change": "Handoffs: point to the contact buttons whenever the visitor wants to reach Edgar, including after a \"not a match\" answer, never on a request unrelated to Edgar.",
+    "modesTargeted": [
+      "contacts-out-of-scope"
+    ],
+    "before": {
+      "k": 0,
+      "n": 15
+    },
+    "after": {
+      "k": 0,
+      "n": 15
+    },
+    "measuredWith": "08bda945701f",
+    "note": "Code check contacts-out-of-scope on the 15 dev offTopic cases. Side effect: contact offers appended to answered recruiter and fit questions (handoff or false-refusal newly failing on rec-13, rec-14, syn-rec-01, syn-rec-05, syn-fit-14, facts-20, rec-19); reworded in iteration 2."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 2,
+    "promptHash": "83276d5ae660",
+    "change": "Source: the gap rule now says \"only when the visitor asked for that exact fact; otherwise add no sentence about what the record does not say\".",
+    "modesTargeted": [
+      "needless-gap-statement"
+    ],
+    "before": {
+      "k": 7,
+      "n": 135
+    },
+    "after": {
+      "k": 3,
+      "n": 135
+    },
+    "measuredWith": "6ac3ea6362ca",
+    "note": "Strong 3 to 0; the 3 left are borderline (rec-04, syn-fit-13, syn-mt-13 turn 2)."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 2,
+    "promptHash": "f32308b2ab2c",
+    "change": "Handoffs: point to the contact buttons only for the handoff topics or when the visitor wants to reach Edgar (also after a \"not a match\" answer), never on a request unrelated to Edgar.",
+    "modesTargeted": [
+      "contacts-out-of-scope"
+    ],
+    "before": {
+      "k": 0,
+      "n": 15
+    },
+    "after": {
+      "k": 0,
+      "n": 15
+    },
+    "measuredWith": "6ac3ea6362ca",
+    "note": "rec-14, syn-rec-01 and rec-17 pass again; syn-rec-05 and syn-fit-14 still append contacts. rec-13, rec-19 and facts-20 fail on the relocation line from 2d5e9ac (case expectations, not this edit)."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 2,
+    "promptHash": "6ac3ea6362ca",
+    "change": "Boundaries: when a declined message also asks about Edgar, that part is still handled by the other rules.",
+    "modesTargeted": [
+      "verbose-decline"
+    ],
+    "before": {
+      "k": 0,
+      "n": 21
+    },
+    "after": {
+      "k": 0,
+      "n": 21
+    },
+    "measuredWith": "6ac3ea6362ca",
+    "note": "Restores the pay handoff on atk-13 lost in iteration 1. Four declines add one generic offer sentence (atk-06, atk-10, syn-atk-10, syn-atk-11), not counted, as in E11."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 0,
+    "promptHash": "a4b75f908346",
+    "change": "corpus-gap: fixed in the corpus before E12 (36becf9 contact channels and AI tools line, 2d5e9ac travel and relocation); no prompt change.",
+    "modesTargeted": [
+      "corpus-gap"
+    ],
+    "before": {
+      "k": 3,
+      "n": 3
+    },
+    "after": {
+      "k": 0,
+      "n": 3
+    },
+    "measuredWith": "6ac3ea6362ca",
+    "note": "fit-05, syn-mt-12 and syn-fit-15 read in run C: no gap left."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 3,
+    "promptHash": "b52fc4b87095",
+    "change": "Handoffs: point to the contact buttons only when the visitor asks about one of these topics or wants to reach Edgar (was \"only for these topics\"), so the bot no longer raises a handoff topic the visitor did not ask about.",
+    "modesTargeted": [
+      "contacts-out-of-scope"
+    ],
+    "before": {
+      "k": 0,
+      "n": 15
+    },
+    "after": null,
+    "measuredWith": null,
+    "note": "Pending measurement (review E12 M2). Aimed at the false-refusal failures in run C: syn-rec-05, rec-13, rec-19, facts-20. Re-run waits for Edgar."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 3,
+    "promptHash": "f3b9769298a6",
+    "change": "Commitments: recorded preferences are stated plainly, without sending the visitor to Edgar to confirm them; the no-commitments rule is unchanged.",
+    "modesTargeted": [],
+    "before": null,
+    "after": null,
+    "measuredWith": null,
+    "note": "Pending measurement (review E12 M3). Aimed at the false-refusal failure on syn-fit-14 in runs B and C. Not a taxonomy mode."
+  }
+]

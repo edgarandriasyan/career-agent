@@ -170,3 +170,21 @@ test("experiment writes the same results files as run.ts", async () => {
   for (const k of ["publicDir", "privateDir"] as const) expect(norm(read(exp[k]))).toEqual(norm(read(runTs[k])));
   expect(Object.keys(read(exp.publicDir).header)).toContain("experimentId");
 });
+
+test("a Phoenix error after the tasks ran still writes the results, marked incomplete, then rethrows", async () => {
+  const exp = dirs();
+  const { deps } = fakePhoenix();
+  const finish = deps.runExperiment;
+  deps.runExperiment = vi.fn(async (p: RunExperimentParams) => {
+    await finish(p);
+    throw new TypeError("fetch failed");
+  });
+  const lines: string[] = [];
+  await expect(runPhoenixExperiment(opts({ agent: spyAgent(0.01) }), { ...deps, dirs: exp, print: (l) => lines.push(l) })).rejects.toThrow("fetch failed");
+  const f = read(exp.publicDir);
+  expect(f.header.incomplete).toBe(true);
+  expect(f.header.experimentId).toBeUndefined();
+  expect(f.header.costUsd).toBeCloseTo(0.03);
+  expect(f.runs.map((r) => r.id).sort()).toEqual(["a", "b", "c"]);
+  expect(lines.some((l) => l.includes(exp.publicDir))).toBe(true);
+});

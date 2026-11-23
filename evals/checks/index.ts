@@ -1,7 +1,16 @@
 import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../../src/types";
+import { contactsOutOfScope } from "./contacts-out-of-scope";
+import { emptyReply } from "./empty-reply";
+import { handedOff } from "./handoff";
+import { mixedLanguage, wantsRussian } from "./mixed-language";
+import { repeatedSentence } from "./repeated-sentence";
+import { truncatedReply } from "./truncated-reply";
+
+export { handedOff, pointsToEdgar } from "./handoff";
 
 /*
- * Code checks: one registry. scoreDeterministic (score.ts) runs every entry; E12 adds entries.
+ * Code checks: one registry. scoreDeterministic (score.ts) runs every entry. The failure-mode checks
+ * from E12 live in their own files, named by mode id (failure-modes.json).
  *
  * Check names and reasons never contain case text (terms, questions, replies, URLs), so results
  * from private cases can be logged safely. A failed check says which list and which position failed.
@@ -11,10 +20,8 @@ import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../../src/ty
  * mustInclude entries may list alternatives separated by "||" (for example "nov||ноябр" so one
  * case works for English and Russian replies). Matching is a case-insensitive substring match.
  *
- * Handoff rule: a reply hands off when the agent sent a fallback event (the page shows the contact
- * buttons) or the reply text sends the visitor to Edgar or the contact buttons (HANDOFF below).
- * A bare mention of "contact" in another sense does not count. On contactAllowed cases only the
- * fallback event counts (handoffFor), so an answer that also offers the contact buttons passes.
+ * Handoff rule: see handoff.ts. On contactAllowed cases only the fallback event counts (handoffFor),
+ * so an answer that also offers the contact buttons passes.
  */
 
 export type CheckInput = {
@@ -34,35 +41,12 @@ export const checkFamily = (name: string): string => name.split("#")[0];
  * Multi-turn cases run every check on every turn. These families read the last turn only (the case's
  * expectations); every other family fails the case when any turn fails it.
  */
-export const LAST_TURN_ONLY = ["mustInclude", "handoff", "false-refusal", "length", "traj:citations", "traj:latency"];
+export const LAST_TURN_ONLY = ["mustInclude", "handoff", "false-refusal", "contacts-out-of-scope", "length", "traj:citations", "traj:latency"];
 
 /** Per-turn agent cost ceilings in USD [Claude's call]; revise from costs.json after E10. */
 export const COST_CEILING: Record<string, number> = { "claude-haiku-5-5": 0.002, "claude-sonnet-5-5": 0.02 };
 export const MAX_WORDS = 180;
 export const MAX_FIRST_SENTENCE_MS = 5000;
-
-const HANDOFF = new RegExp(
-  [
-    String.raw`ask (edgar|him)`,
-    String.raw`(contact|reach|message|email|write to) (out to )?(edgar|him)`,
-    String.raw`contact (buttons?|options)`,
-    String.raw`get in touch`,
-    String.raw`(talk|speak) (to|with) edgar`,
-    String.raw`edgar directly`,
-    String.raw`directly (with|to) edgar`,
-    String.raw`gmail|whatsapp|telegram`,
-    "спросит\\S*\\s+(у\\s+)?эдгар",
-    "свяж\\S*",
-    "напиш\\S*\\s+эдгар",
-    "кнопк\\S*\\s+(контакт|связ)",
-    "контактн\\S*\\s+кнопк",
-    "напрямую\\s+(у|к|с)\\s+эдгар|эдгар\\S*\\s+напрямую",
-  ].join("|"),
-  "i",
-);
-
-export const handedOff = (reply: string, events: AgentEvent[]): boolean =>
-  events.some((e) => e.type === "fallback") || HANDOFF.test(reply);
 
 const handoffFor = (c: EvalCase, reply: string, events: AgentEvent[]): boolean =>
   c.contactAllowed ? events.some((e) => e.type === "fallback") : handedOff(reply, events);
@@ -73,7 +57,7 @@ const URL_RE = /https?:\/\/[^\s<>()"']+/g;
 
 const includes = (text: string, entry: string) => entry.split("||").some((alt) => text.includes(alt.trim().toLowerCase()));
 
-/** Letter count, Latin and Cyrillic shares of letters, and the number of Armenian letters. */
+/** Letter count and the Latin and Cyrillic shares of letters. */
 function scripts(s: string) {
   const count = (re: RegExp) => s.match(re)?.length ?? 0;
   const letters = count(/\p{L}/gu);
@@ -81,13 +65,11 @@ function scripts(s: string) {
     letters,
     latin: letters ? count(/\p{Script=Latin}/gu) / letters : 0,
     cyrillic: letters ? count(/\p{Script=Cyrillic}/gu) / letters : 0,
-    armenian: count(/\p{Script=Armenian}/gu),
   };
 }
 
 export const CODE_CHECKS: Record<string, CheckFn> = {
-  /** An empty visible reply fails even when a fallback showed the contact buttons (Edgar 2026-11-23). */
-  reply: ({ reply }) => [{ name: "reply", pass: reply.trim() !== "", reason: "empty visible reply" }],
+  "empty-reply": emptyReply,
   mustInclude: ({ c, reply }) =>
     (c.mustInclude ?? []).map((s, i) => ({ name: `mustInclude#${i + 1}`, pass: includes(reply.toLowerCase(), s), reason: "required text missing" })),
   mustNotInclude: ({ c, reply }) =>
@@ -112,9 +94,8 @@ export const CODE_CHECKS: Record<string, CheckFn> = {
    * question an English one. No letters in the reply: nothing to check.
    */
   lang: ({ question, reply }) => {
-    const q = scripts(question);
     const r = scripts(reply);
-    const wantRu = q.armenian === 0 && /\p{Script=Cyrillic}{2,}/u.test(question);
+    const wantRu = wantsRussian(question);
     const pass = r.letters === 0 || (wantRu ? r.cyrillic >= 0.5 : r.latin >= 0.8);
     return [{ name: "lang", pass, reason: wantRu ? "reply is not in Russian" : "reply is not in English" }];
   },
@@ -130,6 +111,10 @@ export const CODE_CHECKS: Record<string, CheckFn> = {
   length: ({ reply }) => [
     { name: "length", pass: reply.split(/\s+/).filter(Boolean).length <= MAX_WORDS, reason: `reply over ${MAX_WORDS} words`, advisory: true },
   ],
+  "repeated-sentence": repeatedSentence,
+  "mixed-language": mixedLanguage,
+  "truncated-reply": truncatedReply,
+  "contacts-out-of-scope": contactsOutOfScope,
   "traj:citations": ({ c, events }) =>
     ["facts", "fit", "conflicts"].includes(c.category)
       ? [{
