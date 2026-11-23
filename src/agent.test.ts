@@ -268,6 +268,8 @@ test("SYSTEM_PROMPT carries the seniority, off-topic, case-study and confidentia
   expect(SYSTEM_PROMPT).toMatch(/doesn't cover something only when the visitor asked for that exact fact/);
   expect(SYSTEM_PROMPT).toMatch(/never on a request that has nothing to do with Edgar/);
   expect(SYSTEM_PROMPT).toMatch(/If the message also asks something about Edgar, handle that part/);
-  expect(SYSTEM_PROMPT).toMatch(/only when the visitor asks about one of these topics or wants to reach Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/only when the visitor asks about one of these topics, asks for a figure the document lacks, or wants to reach Edgar/);
+  expect(SYSTEM_PROMPT).toMatch(/without narrating them/);
+  expect(SYSTEM_PROMPT).not.toMatch(/offer to answer questions about Edgar/);
   expect(SYSTEM_PROMPT).toMatch(/state them plainly, without sending the visitor to Edgar to confirm them/);
 });

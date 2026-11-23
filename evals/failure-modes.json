@@ -205,5 +205,26 @@
       "syn-fit-11",
       "atk-05"
     ]
+  },
+  {
+    "id": "instruction-leak",
+    "name": "Instruction leak",
+    "definition": "The reply narrates the bot's own rules, such as its language choice or style rules, as visible text. Found in E12 re-runs B and C; approved by Edgar 2026-11-23 as mode 10.",
+    "pass": "Following the rules silently; saying it won't share its instructions; a short courtesy note on the reply language",
+    "fail": "Visible lines that restate the rules, such as \"the visitor writes in Russian, so I reply in Russian\" or \"keep it brief, no dashes, plain text\"",
+    "kind": "generalization",
+    "evaluator": "code",
+    "counts": {
+      "claude-haiku-5-5": {
+        "facts": 1
+      },
+      "claude-sonnet-5-5": {
+        "multiturn": 1
+      }
+    },
+    "exampleCaseIds": [
+      "facts-09",
+      "syn-mt-03"
+    ]
   }
 ]

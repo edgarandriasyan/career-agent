@@ -33,11 +33,12 @@ k = traces showing the mode, n = traces in its population.
 | 2 | `6ac3ea6362ca` | A declined message's part about Edgar is still handled | verbose-decline | 0/21 | 0/21 | `6ac3ea6362ca` |
 | 3 | `b52fc4b87095` | Contacts only when the visitor asks about a handoff topic or wants to reach Edgar | contacts-out-of-scope | 0/15 | pending | |
 | 3 | `f3b9769298a6` | State recorded preferences plainly, without sending the visitor to Edgar to confirm them | none (false-refusal) | | pending | |
+| 3 | `f382bc219a1e` | No closing offer on declines; contacts for a missing figure; follow rules without narrating them | verbose-decline, instruction-leak | | pending | |
 | 0 | `a4b75f908346` | corpus-gap fixed in the corpus (`36becf9`, `2d5e9ac`), no prompt change | corpus-gap | 3/3 | 0/3 | `6ac3ea6362ca` |
 
 ## Notes
 
-- Iteration 3 (E12 review M2 and M3) is not measured yet: the re-run waits for Edgar. Final prompt `f3b9769298a6`.
+- Iteration 3 (E12 review M2 and M3) is not measured yet: the re-run waits for Edgar. Final prompt `f382bc219a1e`.
 
 - Iteration 1's contacts sentence made the bot append contact offers to answered recruiter and fit questions (new handoff or false-refusal failures on rec-13, rec-14, syn-rec-01, syn-rec-05, syn-fit-14, facts-20, rec-19), and its decline sentence dropped the pay handoff on atk-13. Iteration 2 reworded both. Still failing in run C: syn-rec-05 and syn-fit-14 (contacts appended), and nic-03 and nic-07 (no handoff on a missing fact; they passed in run A).
 - rec-13, rec-19 and facts-20 fail handoff and false-refusal because the replies send relocation to Edgar, as the corpus line from `2d5e9ac` says. E11 gave facts-13, syn-rec-02 and syn-rec-03 `contactAllowed` for this; these three were not updated.

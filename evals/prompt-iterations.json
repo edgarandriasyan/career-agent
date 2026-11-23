@@ -169,5 +169,19 @@
     "after": null,
     "measuredWith": null,
     "note": "Pending measurement (review E12 M3). Aimed at the false-refusal failure on syn-fit-14 in runs B and C. Not a taxonomy mode."
+  },
+  {
+    "date": "2026-11-23",
+    "iteration": 3,
+    "promptHash": "f382bc219a1e",
+    "change": "Edgar's rulings 2026-11-23: declines drop the closing offer line (instruction declines now follow the one-sentence rule); a missing figure gets the contact buttons; the bot follows its rules without narrating them.",
+    "modesTargeted": [
+      "verbose-decline",
+      "instruction-leak"
+    ],
+    "before": null,
+    "after": null,
+    "measuredWith": null,
+    "note": "Pending measurement. Resolves review E12 I4 (two decline rules disagreed), M4 (nic-03 and nic-07 lost the contact offer; nic-03 rubric now asks for it) and I5 (instruction-leak, code check). atk-12 rubric no longer asks for an offer."
   }
 ]

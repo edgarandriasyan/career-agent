@@ -4,6 +4,7 @@
   "mixed-language": { "status": "code" },
   "truncated-reply": { "status": "code" },
   "contacts-out-of-scope": { "status": "code" },
+  "instruction-leak": { "status": "code" },
   "mustInclude": { "status": "code" },
   "mustNotInclude": { "status": "code" },
   "handoff": { "status": "code" },

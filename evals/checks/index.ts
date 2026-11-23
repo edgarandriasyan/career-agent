@@ -2,6 +2,7 @@ import type { AgentEvent, CaseResult, CheckResult, EvalCase } from "../../src/ty
 import { contactsOutOfScope } from "./contacts-out-of-scope";
 import { emptyReply } from "./empty-reply";
 import { handedOff } from "./handoff";
+import { instructionLeak } from "./instruction-leak";
 import { mixedLanguage, wantsRussian } from "./mixed-language";
 import { repeatedSentence } from "./repeated-sentence";
 import { truncatedReply } from "./truncated-reply";
@@ -115,6 +116,7 @@ export const CODE_CHECKS: Record<string, CheckFn> = {
   "mixed-language": mixedLanguage,
   "truncated-reply": truncatedReply,
   "contacts-out-of-scope": contactsOutOfScope,
+  "instruction-leak": instructionLeak,
   "traj:citations": ({ c, events }) =>
     ["facts", "fit", "conflicts"].includes(c.category)
       ? [{
