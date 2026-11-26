@@ -77,6 +77,30 @@
     ]
   },
   {
+    "id": "over-answering",
+    "name": "Says more than asked",
+    "definition": "An in-scope reply answers the question, then adds facts the visitor did not ask for (other roles, dates, reasons, background), or says the same fact twice in different words.",
+    "pass": "Answers what was asked, with only the detail needed to understand or support that answer",
+    "fail": "After answering, adds unrequested facts, roles or reasons, or restates the same fact in other words",
+    "kind": "specification",
+    "evaluator": "judge",
+    "counts": {
+      "claude-haiku-5-5": {
+        "conflicts": 2,
+        "confidential": 1,
+        "not_in_corpus": 1
+      },
+      "claude-sonnet-5-5": {
+        "not_in_corpus": 1
+      }
+    },
+    "exampleCaseIds": [
+      "conf-01",
+      "nic-02",
+      "secret-03"
+    ]
+  },
+  {
     "id": "contacts-out-of-scope",
     "name": "Contacts on off-topic requests",
     "definition": "The reply points to the contact buttons on a request that has nothing to do with Edgar.",

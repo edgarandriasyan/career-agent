@@ -24,7 +24,7 @@ Edgar is an Armenian citizen. He prefers a contract via B2B.
 
 ## Contact
 
-Email: edgar.andriasyan@gmail.com. Edgar can also be reached on WhatsApp and on Telegram (https://t.me/edgarandriasyan) through the contact buttons on this page. Any of these channels is fine; he has no preferred one.
+Email: edgar.andriasyan@gmail.com. Phone and WhatsApp: +374 98 878838 (https://wa.me/37498878838). Telegram: https://t.me/edgarandriasyan. These are also the contact buttons on this page. Any of these channels is fine; he has no preferred one.
 
 LinkedIn: https://www.linkedin.com/in/edgarandriasyan. Website: https://edgarandriasyan.com. Public portfolio: https://app.notion.com/p/edgarandriasyan/portfolio-6be4e64ade974c89b18b608c58dbd10e.
 
